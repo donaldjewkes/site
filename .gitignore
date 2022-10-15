@@ -1,4 +1,5 @@
 # build output
+# /dist was preventing css usage without base tailwind styles applied.
 
 # dependencies
 node_modules/
