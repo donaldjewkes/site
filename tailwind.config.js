@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './src/**/*.{astro,js,jsx,ts,tsx,vue}'
+    './src/**/*.{astro,js,jsx,ts,tsx,vue,css}'
   ],
   mode: 'jit',
   purge: ['./public/**/*.html', './src/**/*.{astro,js,jsx,ts,tsx,vue}'],
