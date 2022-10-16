@@ -411,13 +411,7 @@ video {
 }
 
 a {
-  --tw-text-opacity: 1;
-  color: rgb(154 52 18 / var(--tw-text-opacity));
-  text-decoration-line: underline;
-}
-
-a:hover {
-  text-underline-offset: 4px;
+  text-decoration: underline;
 }
 
 *, ::before, ::after {
@@ -514,14 +508,8 @@ a:hover {
   --tw-backdrop-sepia:  ;
 }
 
-a {
-  --tw-text-opacity: 1;
-  color: rgb(154 52 18 / var(--tw-text-opacity));
-  text-decoration-line: underline;
-}
-
-a:hover {
-  text-underline-offset: 4px;
+.a {
+  text-decoration: underline;
 }
 
 .p-6 {

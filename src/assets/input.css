@@ -4,12 +4,12 @@
 
 @layer base {
     a {
-        @apply underline text-orange-800 hover:underline-offset-4;
+        text-decoration: underline;
     }
 };
 
 @layer components {
-    a {
-        @apply underline text-orange-800 hover:underline-offset-4;
+    .a {
+        text-decoration: underline;
     }
 };
