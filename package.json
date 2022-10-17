@@ -9,6 +9,7 @@
     "preview": "astro preview"
   },
   "devDependencies": {
+    "@astrojs/netlify": "^1.2.0",
     "@astrojs/tailwind": "^2.0.1",
     "astro": "^1.0.0-rc.3",
     "tailwind": "^4.0.0",
