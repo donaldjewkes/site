@@ -1,3 +1,7 @@
+---
+import DirHeader from "../components/DirHeader.astro";
+---
+
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -9,13 +13,18 @@
 		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
 	</style>
 
-	<body class="p-6">
+	<DirHeader>
+
+	</DirHeader>
+
+	<div class="p-4">
 		<!-- <div class="">Hey, it's Donald.</div> -->
-		<a href="/bread" class="">
-			<div class="rounded-lg bg-amber-400 w-32">
-				<div class="p-4 text-center text-xl">Bread</div>
+		<div class="group bg-black hover:bg-white transition-all border border-neutral-700 w-24">
+				<a href="/bread" class="">
+				<img class=" inset-0 w-full object-cover" src="/images/bread/neoclassicalbread.jpg">
+				<div class="p-1 text-white text-center text-lg group-hover:text-black">Bread</div>
+				</a>
 			</div>
-		</a>
 		<div class="">
 
 		</div>
@@ -23,5 +32,5 @@
 			<div>Contact:</div>
 			<div>donaldjewkes [at] gmail [dot] com</div>
 		</div> -->
-	</body>
+	</div>
 </html>
