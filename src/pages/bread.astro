@@ -1,24 +1,23 @@
 ---
-import SubDirHeader from "../components/SubDirHeader.astro";
+import DirHeader from "../components/DirHeader.astro";
 ---
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="description" content="Donald Jewkes's bread reviews in Vancouver, Canada. Trying to find the best bakeries in Vancouver."/>
-		<title>Dol - Bread</title>
+		<title>Donald Jewkes</title>
 		<link href="/dist/output.css" rel="stylesheet">
 	</head>
 	<style>
 		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
 	</style>
-	<SubDirHeader>
-	</SubDirHeader>
+	<DirHeader></DirHeader>
 
 	<div class="p-4">
 		<h1 class="text-xl font-bold">Vancouver Bread Reviews</h1>
 		<h2 class="text-neutral-500" >
-			I buy loaves of bread and tell you what I think.
+			I try bread and tell you what I think.
 		</h2>
 		<div class="py-8 grid grid-cols-1 ">
 			<div>
@@ -69,9 +68,5 @@ import SubDirHeader from "../components/SubDirHeader.astro";
 			</div>
 		</div>
 
-		<div class="pt-6">
-			<div class="font-bold text-lg text-neutral-800">Want me to review a loaf? </div>
-			<div class="text-neutral-500">Let me know at donaldjewkes [at] gmail [dot] com</div>
-		</div>
 	</div>
 </html>

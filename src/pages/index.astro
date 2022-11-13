@@ -1,11 +1,15 @@
 ---
 import DirHeader from "../components/DirHeader.astro";
+import MainDirectory from "../components/MainDirectory.astro";
+import { Image, Picture } from '@astrojs/image/components';
+import localImage from "../assets/tester.jpg";
+import localImage2 from "/public/test2.jpg";
 ---
 
 <html lang="en">
 	<head>
 		<meta name="google-site-verification" content="xEw0P5dx-_SXX7bqTGQomBICE9IIyFSRm2xoNr85ubY" />
-		<meta name="description" content="Donald Jewkes' personal website. Created in Vancouver, Canada."/>
+		<meta name="description" content="Donald Jewkes - I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences."/>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<title>Dol</title>
@@ -16,23 +20,19 @@ import DirHeader from "../components/DirHeader.astro";
 	</style>
 
 	<DirHeader>
-
 	</DirHeader>
 
 	<div class="p-4">
-		<!-- <div class="">Hey, it's Donald.</div> -->
-		<div class="group bg-black hover:bg-white transition-all border border-neutral-700 w-24">
-				<a href="/bread" class="">
-				<img class=" inset-0 w-full object-cover" src="/images/bread/neoclassicalbread.jpg" alt="neoclassical painting of bread">
-				<div class="p-1 text-white text-center text-lg group-hover:text-black">Bread</div>
-				</a>
-			</div>
-		<div class="">
-
+		<div class="flex flex-col space-y-1 items-start justify-center">
+			<MainDirectory link="/about" image={import('/public/images/icons/wavefill.png')} text="me">
+			</MainDirectory>
+			<MainDirectory link="/bread" image={import('/public/images/icons/bread.png')} text="bread">
+			</MainDirectory>
+			<MainDirectory link="/photos" image={import('/public/images/icons/camera.png')} text="photos">
+			</MainDirectory>
+			<MainDirectory link="/thinks" image={import('/public/images/icons/thinking.png')} text="thinks">
+			</MainDirectory>
 		</div>
-		<!-- <div class="pt-4">
-			<div>Contact:</div>
-			<div>donaldjewkes [at] gmail [dot] com</div>
-		</div> -->
 	</div>
 </html>
+ 
