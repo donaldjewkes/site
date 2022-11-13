@@ -1,15 +1,21 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './src/**/*.{astro,js,jsx,ts,tsx,vue,css}'
+    "./src/**/*.{html,astro,js,jsx,ts,tsx,vue,css}",
+
   ],
+  // './src/**/*.{html,astro,js,jsx,ts,tsx,vue,css}'
   mode: 'jit',
-  purge: ['./public/**/*.html', './src/**/*.{astro,js,jsx,ts,tsx,vue}'],
     theme: {
-      fontFamily: {
-        'sans': ['"Noto Sans Mono"', 'monospace'],
-        'sans-serif': ['"Noto Sans Mono"', 'monospace'],
-        'mono': ['"Noto Sans Mono"', 'monospace'],
+      extend: {
+        fontFamily: {
+          'sans': ['"Noto Sans Mono"', 'monospace'],
+          'sans-serif': ['"Noto Sans Mono"', 'monospace'],
+          'mono': ['"Noto Sans Mono"', 'monospace'],
+        },
+        colors: {
+          dgreen: '#465234'
+        },
       },
     },
 }
