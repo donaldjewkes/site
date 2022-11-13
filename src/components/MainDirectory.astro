@@ -1,0 +1,28 @@
+---
+const {link, image, text} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+---
+<a href={link}>
+    <div class="flex flex-row items-center group">
+        <div class="flex flex-col items-center justify-center">
+            <div class="absolute bg-amber-400 group-hover:bg-dgreen transition-all duration-300 rounded h-8 w-8"></div>
+            <Image width={75} class="relative h-10 w-10" src={image} alt="icon"></Image>
+        </div>
+        <!-- <div class="p-2">
+            -
+        </div> -->
+        <div>
+            <img class="h-3 mx-2" src="/images/icons/next.svg">
+        </div>
+        <div class="relative flex flex-col">
+            <div class="grup-hover:underline decoration-double decoration-dgreen decoration-2 underline-offset-4 transition-all duration-300">
+                {text}
+            </div>
+            <div class="w-0 group-hover:w-full h-0.5 bg-dgreen btransition-all duration-500">
+            </div>
+        </div>
+        <!-- <div>
+            <img class="h-4" src="/images/icons/next.svg">
+        </div> -->
+    </div>
+</a>

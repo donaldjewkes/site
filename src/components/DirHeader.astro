@@ -1,24 +1,24 @@
 ---
 const directory = ""
+import { Image, Picture } from '@astrojs/image/components';
 ---
 
-<div class="relative h-14 w-full bg-lime-200 mix-blend-multiply flex items-center">
-    <div class="absolute w-full h-full bg-neutral-700/90 mix-blend-multiply"></div>
-    <div class="pl-4 relative inline-flex">
-        <a href="/" class="group inline-flex">
-            <img src="/images/headericon.png" class="relative border border-black group-hover:border-amber-black group-hover:bg-amber-400 transition-all duration-300 my-1 mr-1 h-8 w-8" alt="ambiguous sentiment icon">
-            <div class="relative px-2 py-2">
-                <div class="">
-                    <span class="underline underline-offset-4 text-white">home</span>
+<div class="relative h-14 w-full bg-dgreen mix-blend-multiply border-b border-black flex items-center">
+    <a href="/">
+        <div class="pl-4 flex flex-row items-center group">
+            <div class="flex flex-col items-center justify-center">
+                <div class="absolute bg-amber-400  group-hover:bg-dgree rounded-full transition-all duration-500 h-10 w-10 border-4 border-dgreen group-hover:border-white "></div>
+                <div class="absolute bg-dgreen group-hover:bg-amber-400 rounded-full transition-all duration-500 mb-2 -mr-0.5 h-3 w-4"></div>
+                <Image width={75} class="relative h-10 w-10" src={import('/public/images/icons/dol.png')} alt="icon"></Image>
+            </div>
+            <div class="pl-3">
+                <div class="text-white grup-hover:underline decoration-double decoration-dgreen decoration-2 underline-offset-4 transition-all duration-300">
+                    Donald Jewkes
+                </div>
+                <div class="w-0 group-hover:w-full h-0.5 bg-white btransition-all duration-300">
                 </div>
             </div>
-        </a>
-    </div>
+        </div>
+    </a>
     
-</div>
-
-<div class="border-b border-black w-full">
-</div>
-<div>
-
 </div>
