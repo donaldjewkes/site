@@ -1,0 +1,34 @@
+---
+const {link, image, text} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+import DirHeader from "../components/DirHeader.astro";
+const grizz = import('/public/images/vancouver/van1.jpg')
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Donald Jewkes</title>
+		<link href="/dist/output.css" rel="stylesheet">
+	</head>
+	<style>
+		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
+	</style>
+
+	<DirHeader></DirHeader>
+	
+	<div class="p-4 max-w-md">
+		<div class=""></div>
+		<div class="">
+			<Image width={500} class="relative py-1 w-72" src={grizz}alt="Fishing in a river."></Image>
+			<Image width={1000} class="relative py-1 w-72" src={import('/public/images/vancouver/van2.jpg')} alt="A flying eagle"></Image>
+			<Image width={500} class="relative py-1 w-72" src={import('/public/images/vancouver/van3.jpg')} alt="A grizzly bear eating muscles on the beach."></Image>
+			<Image width={1000} class="relative py-1 w-72" src={import('/public/images/vancouver/van4.jpg')} alt="An orca swimming."></Image>
+
+		</div>
+	</div>
+	
+
+
+
+</html>
