@@ -1,4 +1,5 @@
 # build output
+/dist
 # /dist was preventing css usage without base tailwind styles applied.
 
 # dependencies
