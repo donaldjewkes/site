@@ -2,7 +2,6 @@
 module.exports = {
   content: [
     "./src/**/*.{html,astro,js,jsx,ts,tsx,vue,css}",
-
   ],
   // './src/**/*.{html,astro,js,jsx,ts,tsx,vue,css}'
   mode: 'jit',

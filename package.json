@@ -10,7 +10,6 @@
   },
   "devDependencies": {
     "@astrojs/image": "^0.11.4",
-    "@astrojs/netlify": "^1.2.0",
     "@astrojs/tailwind": "^2.0.1",
     "astro": "^1.0.0-rc.3",
     "sharp": "^0.31.2",
