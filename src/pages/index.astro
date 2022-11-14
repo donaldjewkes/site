@@ -3,7 +3,6 @@ import DirHeader from "../components/DirHeader.astro";
 import MainDirectory from "../components/MainDirectory.astro";
 import { Image, Picture } from '@astrojs/image/components';
 import localImage from "../assets/tester.jpg";
-import localImage2 from "/public/test2.jpg";
 ---
 
 <html lang="en">
@@ -24,13 +23,13 @@ import localImage2 from "/public/test2.jpg";
 
 	<div class="p-4">
 		<div class="flex flex-col space-y-1 items-start justify-center">
-			<MainDirectory link="/about" image={import('/public/images/icons/wavefill.png')} text="me">
+			<MainDirectory link="/about" image="/images/icons/wave.png" text="me">
 			</MainDirectory>
-			<MainDirectory link="/bread" image={import('/public/images/icons/bread.png')} text="bread">
+			<MainDirectory link="/bread" image="/images/icons/bread.png" text="bread">
 			</MainDirectory>
-			<MainDirectory link="/photos" image={import('/public/images/icons/camera.png')} text="photos">
+			<MainDirectory link="/photos" image="/images/icons/camera.png" text="photos">
 			</MainDirectory>
-			<MainDirectory link="/thinks" image={import('/public/images/icons/thinking.png')} text="thinks">
+			<MainDirectory link="/thinks" image="/images/icons/thinking.png" text="thinks">
 			</MainDirectory>
 		</div>
 	</div>
