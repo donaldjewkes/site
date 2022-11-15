@@ -2,9 +2,8 @@
 const {link, image, text} = Astro.props
 import { Image, Picture } from '@astrojs/image/components';
 import DirHeader from "../components/DirHeader.astro";
+import PhotoDirectory from '../components/PhotoDirectory.astro';
 const grizz = import('/public/images/vancouver/van1.jpg')
-const bread = import("../assets/tester.jpg")
-const icon = import("../assets/tester.jpg")
 // import testing from "../dol.png" don't like this import
 ---
 <html lang="en">
@@ -19,24 +18,11 @@ const icon = import("../assets/tester.jpg")
 
 	<DirHeader id="top"></DirHeader>
 	
-	<div class="p-4 max-w-md">
+	<div class="p-4 max-w-md ">
+		<PhotoDirectory class="relative py-10" link="/photos/vancouver" image={import("/public/images/vancouver/van3.jpg")} text="Vancouver" alt="Vancouver bear."></PhotoDirectory>
+		<PhotoDirectory class="relative py-1" link="/photos/sf" image={import("/public/images/sf/sfp8.jpg")} text="San Fransisco" alt="San Fransisco House."></PhotoDirectory>
 		<div class=""></div>
-		<div class="">
-			<!-- <img class="relative py-1 w-92" src="/images/vancouver/van1.jpg" alt="Fishing for salmon.">
-			<img class="relative py-1 w-92" src="/images/vancouver/van2.jpg" alt="An eagle in flight">
-			<img class="relative py-1 w-92" src="/images/vancouver/van3.jpg" alt="A grizzly bear eating muscles on the beach.">
-			<img class="relative py-1 w-92" src="/images/vancouver/van4.jpg" alt="An orca swimming."> -->
 
-
-			<Image width={500} height={100} class="relative py-1 w-92" src={bread} alt="Fishing in a river."></Image>
-			<Image class="relative py-1 w-92" src={icon } alt="Fishing in a river."></Image>
-			<Image class="relative py-1 w-92" src={import("../assets/tester.jpg")} alt="Fishing in a river."></Image>
-			<Image width={1000} class="relative py-1 w-92" src={bread} alt="A flying eagle"></Image>
-			<Image width={750} class="relative py-1 w-92" src={import('/public/images/vancouver/van3.jpg')} alt="A grizzly bear eating muscles on the beach."></Image>
-			<Image width={1000} class="relative py-1 w-92" src={import('/public/images/vancouver/van4.jpg')} alt="An orca swimming."></Image>
-
-		</div>
-		<a class="underline" href="#top">Top</a>
 	</div>
 	
 
