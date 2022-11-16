@@ -1,0 +1,15 @@
+---
+const {link, image, alt, breadName, bakery} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+---
+<a class="group" href={link}>
+    <div class="inline-flex flex-row ">
+        <div class="inline-flex flex-row items-center p-3">
+            <img class="ring-1 rounded-sm ring-lime-800 group-hover:ring-amber-400 transition-all duration-300 ring-offset-2 ring-offset-neutral-100 w-12 h-12 object-cover" src={image} alt={breadName}>
+            <div class="px-4 text-neutral-700 flex flex-col">
+                <div class="font-bold text-neutral-800">{breadName}</div> 
+                <div class="font-light text-neutral-500 text-sm"><span class="text-xs italic">from </span>{bakery}</div>
+            </div>
+        </div>
+    </div>
+</a>
