@@ -1,5 +1,6 @@
 ---
 import DirHeader from "../../components/DirHeader.astro";
+import Toasters from '../../components/Toasters.jsx';
 ---
 
 <html lang="en">
@@ -7,7 +8,7 @@ import DirHeader from "../../components/DirHeader.astro";
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="description" content="Dark Chocolate Sourdough bread review from Nelson the Seagull in Vancouver, Canada."/>
-		<title>Dol - Dark Chocolate</title>
+		<title>Dark Chocolate Sourdough - Vancouver Bread Reviews</title>
 	</head>
 	<style>
 		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
@@ -22,23 +23,9 @@ import DirHeader from "../../components/DirHeader.astro";
 			<span>This loaf came recommended from a friend.</span>			
 			<div>I picked this up on a rainy Thursday morning before work.</div>
 			<div>The loaf was still warm which made the walk home pleasant.</div>
-			<div class="py-4 relative flex flex-col items-center sm:items-start">
+			<div class="py-2 relative flex flex-col items-center sm:items-start">
 				<img class="h-72 w-72 object-cover rounded" src="/images/bread/nelson-chocolate2.jpg">
-
-				<div class="pt-4">
-					<div class="font-bold text-lg">Rating: 7/10 Toasters</div>
-					<div class="p-2 bg-lime-800/50 border border-neutral-500 inline-flex rounded space-x-1">
-						<img  class="h-6" src="/images/bread/toaster.png">
-						<img  class="h-6" src="/images/bread/toaster.png">
-						<img  class="h-6" src="/images/bread/toaster.png">
-						<img  class="h-6" src="/images/bread/toaster.png">
-						<img  class="h-6" src="/images/bread/toaster.png">
-						<img  class="h-6" src="/images/bread/toaster.png">
-						<img  class="h-6 grayscale opacity-50" src="/images/bread/toaster.png">
-						<img  class="h-6 grayscale opacity-50" src="/images/bread/toaster.png">
-						<img  class="h-6 grayscale opacity-50" src="/images/bread/toaster.png">
-					</div>
-				</div>
+				<Toasters numToasters={8}/>
 			</div>
 			<div>This sourdough was particularly pretty. It was reminiscent of a dark rye but there were visible pockets of chocolate throughout.</div>
 			<div class="">There is a nutty bitterness that will appease dark chocolate enthusiasts. I found the chocolate gave the crumb a nice moisture. 

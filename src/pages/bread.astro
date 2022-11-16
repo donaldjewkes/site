@@ -1,12 +1,13 @@
 ---
 import DirHeader from "../components/DirHeader.astro";
+import BreadPage from "../components/BreadPage.astro";
 ---
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="description" content="Donald Jewkes's bread reviews in Vancouver, Canada. Trying to find the best bakeries in Vancouver."/>
-		<title>Donald Jewkes</title>
+		<title>Vancouver Bread Reviews</title>
 	</head>
 	<style>
 		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
@@ -18,38 +19,15 @@ import DirHeader from "../components/DirHeader.astro";
 		<h2 class="text-neutral-500" >
 			I try bread and tell you what I think.
 		</h2>
-		<div class="py-8 grid grid-cols-1 ">
+		<div class="py-4 grid grid-cols-1 ">
 			<div>
-				<a href="/bread/purebread">
-					<div class="hover:translate-x-1 transition-all">
-						<div class="inline-flex flex-row ">
-							<div class="inline-flex flex-row items-center p-3">
-								<img class="ring-1 ring-lime-800 ring-offset-2 ring-offset-neutral-100 w-12 h-12 object-cover" src="/images/bread/purebread-ro-icon.jpg" alt="purebread icon">
-								<div class="px-4 text-neutral-700 flex flex-col">
-									<div class="font-bold text-neutral-800 text-lg">Rosemary Olive</div> 
-									<div class="font-light text-neutral-500"><span class="text-xs italic">from</span> Purebread</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</a>
+				<BreadPage link="/bread/purebread-olive" image="/images/bread/purebread-ro-icon.jpg" breadName="Rosemary Olive" bakery="Purebread"></BreadPage>
 			</div>
 			<div class="ml-2 w-40 border-t border-1 border-lime-800/50 my-4"></div>
-			<div class="pt-">
-				<a class="" href="/bread/nelson-chocolate">
-					<div class="hover:translate-x-1 transition-all">
-						<div class="inline-flex flex-row ">
-							<div class="inline-flex flex-row items-center p-3">
-								<img class="ring-1 ring-lime-800 ring-offset-2 ring-offset-neutral-100 w-12 h-12 object-cover" src="/images/bread/nelson-icon.jpg" alt="nelson the seagull icon">
-								<div class="px-4  flex flex-col">
-									<div class="font-bold text-neutral-800 text-lg">Dark Chocolate Sourdough</div> 
-									<div class="font-light text-neutral-500"><span class="text-xs italic">from</span> Nelson the Seagull</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</a>
+			<div>
+				<BreadPage link="/bread/nelson-chocolate" image="/images/bread/nelson-icon.jpg" breadName="Dark Chocolate Sourdough" bakery="Nelson the Seagull"></BreadPage>
 			</div>
+			
 		</div>
 		
 		<div class="">
