@@ -1,10 +1,10 @@
 import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
 import tailwind from "@astrojs/tailwind";
 import image from "@astrojs/image";
 
-// https://astro.build/config
+import netlify from "@astrojs/netlify/functions"; // https://astro.build/config
 
-import netlify from "@astrojs/netlify/functions";
 
 // https://astro.build/config
 export default defineConfig({
@@ -16,7 +16,7 @@ export default defineConfig({
   }), image({
     serviceEntryPoint: '@astrojs/image/sharp',
     logLevel: 'debug'
-  })],
+  }), react()],
   output: 'server',
   adapter: netlify({
     dist: new URL('./dist/', import.meta.url)
