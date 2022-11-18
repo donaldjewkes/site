@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@astrojs/image": "^0.11.4",
+    "@astrojs/partytown": "^1.0.1",
     "@astrojs/react": "^1.2.2",
     "@astrojs/tailwind": "^2.0.1",
     "astro": "^1.6.8",
