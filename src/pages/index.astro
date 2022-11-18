@@ -1,22 +1,13 @@
 ---
+import MetaData from "../components/MetaData.astro";
 import DirHeader from "../components/DirHeader.astro";
 import MainDirectory from "../components/MainDirectory.astro";
 import { Image, Picture } from '@astrojs/image/components';
 import localImage from "../assets/tester.jpg";
 ---
-
 <html lang="en">
-	<head>
-		<meta name="google-site-verification" content="xEw0P5dx-_SXX7bqTGQomBICE9IIyFSRm2xoNr85ubY" />
-		<meta name="description" content="I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences."/>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Donald Jewkes</title>
-	</head>
-	<style>
-		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
-	</style>
-
+	<MetaData title="Donald Jewkes" 
+		description="I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences."></MetaData>
 	<DirHeader>
 	</DirHeader>
 

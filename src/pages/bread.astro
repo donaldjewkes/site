@@ -1,17 +1,11 @@
 ---
+import MetaData from "../components/MetaData.astro";
 import DirHeader from "../components/DirHeader.astro";
 import BreadPage from "../components/BreadPage.astro";
 ---
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="description" content="Donald Jewkes's bread reviews in Vancouver, Canada. Trying to find the best bakeries in Vancouver."/>
-		<title>Vancouver Bread Reviews</title>
-	</head>
-	<style>
-		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
-	</style>
+	<MetaData title="Donald Jewkes - Vancouver Bread Reviews" 
+		description="Trying to find the best bread in Vancouver."></MetaData>
 	<DirHeader></DirHeader>
 
 	<div class="p-4">
