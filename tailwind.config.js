@@ -8,7 +8,7 @@ module.exports = {
     theme: {
       extend: {
         fontFamily: {
-          'sans': ['"Noto Sans Mono"', 'monospace'],
+          'sans': ['Noto Serif JP', 'serif'],
           'sans-serif': ['"Noto Sans Mono"', 'monospace'],
           'mono': ['"Noto Sans Mono"', 'monospace'],
         },
