@@ -1,0 +1,30 @@
+---
+const { title, description} = Astro.props
+---
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+    <meta name="description" content={description}/>
+</head>
+    <!-- Google tag (gtag.js) -->
+    <meta name="google-site-verification" content="xEw0P5dx-_SXX7bqTGQomBICE9IIyFSRm2xoNr85ubY" />
+    <script
+        type="text/partytown" 
+        async src="https://www.googletagmanager.com/gtag/js?id=G-S7FWS6FC94">
+    </script>
+    <script type="text/partytown"> 
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-S7FWS6FC94');
+    </script>
+    <style>
+        /* @import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap'); */
+        @import url("https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400;500;600;700;900&display=swap");
+    </style>
+<div class="lg:pt-6 max-w-2xl mx-auto w-full">
+    <slot/>
+</div>
+
