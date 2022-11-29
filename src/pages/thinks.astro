@@ -1,16 +1,16 @@
 ---
-import MetaData from "../components/MetaData.astro";
+import Base from "../components/Base.astro";
 const {link, image, text} = Astro.props
 import { Image, Picture } from '@astrojs/image/components';
 import DirHeader from "../components/DirHeader.astro";
 ---
 <html lang="en">
-	<MetaData title="Donald Jewkes - Thinks" 
-		description="What's going on in my brain."></MetaData>
-	<DirHeader></DirHeader>
-	
-	<div class="p-4">
-		<div class="">Brain empty.</div>
-		<div class="font-light text-neutral-500 text-sm ">Check back tomorrow.</div>
-	</div>
+	<Base title="Donald Jewkes - Thinks" 
+		description="What's going on in my brain.">
+		<DirHeader></DirHeader>
+		<div class="p-4">
+			<div class="">Brain empty.</div>
+			<div class="font-light text-neutral-500 text-sm ">Check back tomorrow.</div>
+		</div>
+	</Base>
 </html>
