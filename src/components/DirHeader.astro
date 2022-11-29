@@ -5,23 +5,29 @@ import { Image, Picture } from '@astrojs/image/components';
 import dol from '../dol.png'
 ---
 
-<div class="relative h-14 w-full bg-dgreen mix-blend-multiply border-b border-black flex items-center">
-    <a href="/">
-        <div class="pl-4 flex flex-row items-center group">
-            <div class="flex flex-col items-center justify-center">
-                <div class="absolute bg-amber-400  group-hover:bg-dgree rounded-full transition-all duration-500 h-10 w-10 border-4 border-dgreen group-hover:border-amber-400 "></div>
-                <div class="absolute bg-dgreen group-hover:bg-amber-400 rounded-full transition-all duration-500 mb-2 -mr-0.5 h-3 w-4"></div>
-                <img class="relative h-10 w-10" src="/images/icons/dol.png" alt="icon">
-                <!-- <Image width={75} height={75} class="relative h-10 w-10" src={import("../dol.png")} alt="icon"></Image> -->
+<div class="relative w-full mx-auto max-w-2xl mix-blend-multiply border-black flex items-center">
+    <a href="/" class="w-full">
+        <div class="flex flex-col items-start w-full">
+            <!-- <div class="absolute w-full rounded object-bottom object-cover">
+                <img class="-z-10 h-16 w-full object-top object-cover rounded" src="/images/pages/hero2.jpg">
+            </div> -->
+            <div class=" h-16 pl-4 flex flex-row items-center group">
+                <div class="flex flex-col items-center justify-center">
+                    <div class="absolute  bg-amber-400 border border-zinc-600 group-hover:border-dgreen rounded-full transition-all duration-300 h-10 w-10  "></div>
+                    <div class="absolute bg-dgreen group-hover:bg-amber-400 rounded-full transition-all duration-300 mb-2 -mr-0.5 h-3 w-4"></div>
+                    <img class="relative h-10 w-10" src="/images/icons/dol.png" alt="icon">
+                    <!-- <Image width={75} height={75} class="relative h-10 w-10" src={import("../dol.png")} alt="icon"></Image> -->
+                </div>
+                <div class="relative pl-3">
+                    <div class="text-zinc-800 font-bold text-lg grup-hover:underline decoration-double decoration-dgreen decoration-2 underline-offset-4 transition-all duration-300">
+                        Donald Jewkes
+                    </div>
+                    <div class="w-0 group-hover:w-full h-0.5 bg-dgreen btransition-all duration-300">
+                    </div>
+                </div>
             </div>
-            <div class="pl-3">
-                <div class="text-white grup-hover:underline decoration-double decoration-dgreen decoration-2 underline-offset-4 transition-all duration-300">
-                    Donald Jewkes
-                </div>
-                <div class="w-0 group-hover:w-full h-0.5 bg-white btransition-all duration-300">
-                </div>
+            <div class=" lg:mt-2 mx-auto  w-full border-b border-zinc-300">
             </div>
         </div>
     </a>
-    
 </div>
