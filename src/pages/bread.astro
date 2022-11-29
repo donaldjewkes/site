@@ -1,43 +1,48 @@
 ---
-import MetaData from "../components/MetaData.astro";
+import Base from "../components/Base.astro";
 import DirHeader from "../components/DirHeader.astro";
-import BreadPage from "../components/BreadPage.astro";
+import BreadLink from "../components/BreadLink.astro";
 ---
 <html lang="en">
-	<MetaData title="Donald Jewkes - Vancouver Bread Reviews" 
-		description="Trying to find the best bread in Vancouver."></MetaData>
+	<Base title="Donald Jewkes - Vancouver Bread Reviews" 
+		description="Trying to find the best bread in Vancouver.">
 	<DirHeader></DirHeader>
 
-	<div class="p-4">
-		<h1 class="text-xl font-bold">Vancouver Bread Reviews</h1>
-		<h2 class="text-neutral-500" >
-			I try bread and tell you what I think.
-		</h2>
-		<div class="py-4 grid grid-cols-1 ">
-			<div>
-				<BreadPage link="/bread/purebread-olive" image="/images/bread/purebread-ro-icon.jpg" breadName="Rosemary Olive" bakery="Purebread"></BreadPage>
-			</div>
-			<div class="ml-2 w-40 border-t border-1 border-lime-800/50 my-4"></div>
-			<div>
-				<BreadPage link="/bread/nelson-chocolate" image="/images/bread/nelson-icon.jpg" breadName="Dark Chocolate Sourdough" bakery="Nelson the Seagull"></BreadPage>
+		<div class="p-4">
+			<h1 class="text-xl text-zinc-800 font-bold">Vancouver Bread Reviews</h1>
+			<h2 class="text-zinc-500" >
+				I try bread and tell you what I think.
+			</h2>
+			<div class="py-4 grid grid-cols-1 ">
+				<div>
+					<BreadLink link="/bread/purebread-olive" image="/images/bread/purebread-ro-icon.jpg" breadName="Rosemary Olive" bakery="Purebread"></BreadLink>
+				</div>
+				<div class="ml-2 w-40 border-t border-1 border-lime-800/50 my-2"></div>
+				<div>
+					<BreadLink link="/bread/nelson-chocolate" image="/images/bread/nelson-icon.jpg" breadName="Dark Chocolate Sourdough" bakery="Nelson the Seagull"></BreadLink>
+				</div>
+				<div class="ml-2 w-40 border-t border-1 border-lime-800/50 my-2"></div>
+				<div>
+					<BreadLink link="/bread/fife-cinnamon" image="/images/bread/fife-ft-icon.jpg" breadName="Cinnamon Raisin" bakery="Fife"></BreadLink>
+				</div>
+				
 			</div>
 			
-		</div>
-		
-		<div class="">
-			<div class="font-bold text-lg text-neutral-800 ">Future Reviews:</div>
-			<div class="pt-2 text-neutral-500">
-				<ul class="ml-4 list-disc">
-					<li class="line-through">Dark Chocolate Sourdough from Nelson the Seagull</li>
-					<li>Terra Breads</li>
-					<li>Birds and the Beets</li>
-					<li>Bâtard Bakery</li>
-					<li>Fratlli's</li>
-					<li>Cob's</li>
-					<li>Safeway $1.99 loaf</li>
-				</ul>
+			<div class="">
+				<div class="font-bold text-lg text-zinc-800 ">Future Reviews:</div>
+				<div class="pt-2 text-neutral-500">
+					<ul class="ml-4 list-disc">
+						<li class="line-through">Dark Chocolate Sourdough from Nelson the Seagull</li>
+						<li>Terra Breads</li>
+						<li>Birds and the Beets</li>
+						<li>Bâtard Bakery</li>
+						<li>Fratlli's</li>
+						<li>Cob's</li>
+						<li>Safeway $1.99 loaf</li>
+					</ul>
+				</div>
 			</div>
-		</div>
 
-	</div>
+		</div>
+	</Base>
 </html>

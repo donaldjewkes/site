@@ -1,28 +1,38 @@
 ---
-import MetaData from "../components/MetaData.astro";
+import Base from "../components/Base.astro";
 import DirHeader from "../components/DirHeader.astro";
 import MainDirectory from "../components/MainDirectory.astro";
 import { Image, Picture } from '@astrojs/image/components';
 import localImage from "../assets/tester.jpg";
 ---
 <html lang="en">
-	<MetaData title="Donald Jewkes" 
-		description="I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences."></MetaData>
+	<Base title="Donald Jewkes" 
+		description="I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences.">
 	<DirHeader>
 	</DirHeader>
 
-	<div class="p-4">
-		<div class="flex flex-col space-y-1 items-start justify-center">
-			<MainDirectory link="/about" image="/images/icons/wave.png" text="me" alt="A waving hand.">
-			</MainDirectory>
-			<MainDirectory link="/bread" image="/images/icons/bread.png" text="bread" alt="A loaf of bread.">
-			</MainDirectory>
-			<MainDirectory link="/photos" image="/images/icons/camera.png" text="photos" alt="An old film camera.">
-			</MainDirectory>
-			<MainDirectory link="/thinks" image="/images/icons/thinking.png" text="thinks" alt="A man sitting and thinking.">
-			</MainDirectory>
+		<div class="w-full mx-auto">
+			<div class="w-full mx-auto p-4">
+				<div class=" w-full flex flex-row items-center justify-between space-x-4">
+					<div class="flex flex-col space-y-1 items-start justify-center">
+						<MainDirectory link="/about" image="/images/icons/wave.png" text="me" alt="A waving hand.">
+						</MainDirectory>
+						<MainDirectory link="/bread" image="/images/icons/bread.png" text="bread" alt="A loaf of bread.">
+						</MainDirectory>
+						<MainDirectory link="/photos" image="/images/icons/camera.png" text="photos" alt="An old film camera.">
+						</MainDirectory>
+						<!-- <MainDirectory link="/thinks" image="/images/icons/thinking.png" text="thinks" alt="A man sitting and thinking.">
+						</MainDirectory> -->
+						<MainDirectory link="/projects" image="/images/icons/chisel.png" text="projects" alt="A chisel and a block.">
+						</MainDirectory>
+					</div>
+					<div class=" rounded">
+						<Image width={200} class="relative rounded w-full h-40 object-cover object-center opacity-95 " src={import('/public/images/pages/church.jpg')} alt="Saints Peter and Paul Church"></Image>
+					</div>
+				</div>
+				<!-- {import("/public/images/icons/thinking.png")} -->
+			</div>
 		</div>
-		<!-- {import("/public/images/icons/thinking.png")} -->
-	</div>
+	</Base>
 </html>
  
