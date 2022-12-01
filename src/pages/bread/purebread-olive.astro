@@ -1,16 +1,15 @@
 ---
-import MetaData from "../../components/MetaData.astro";
+import Base from "../../components/Base.astro";
 import DirHeader from "../../components/DirHeader.astro";
 import Toasters from '../../components/Toasters.jsx';
 ---
-<html lang="en">
-	<MetaData title="Rosemary Olive - Vancouver Bread Reviews" 
-		description="Rosemary Olive bread review from Purebread in Vancouver, Canada."></MetaData>
+<Base title="Rosemary Olive - Vancouver Bread Reviews" 
+		description="Rosemary Olive bread review from Purebread in Vancouver, Canada.">
 	<DirHeader></DirHeader>
 
-	<div class="p-4 max-w-lg">
+	<div class="p-4 max-w-xl">
 		<h1 class="text-xl font-bold">Rosemary Olive</h1>
-		<h2 class="font-light text-neutral-500"><span class="text-xs italic">from</span> <a class="underline" href="https://www.purebread.ca/">Purebread</a></h2>
+		<h2 class="font-light text-zinc-600"><span class="text-xs italic">from</span> <a class="underline" href="https://www.purebread.ca/">Purebread</a></h2>
 		<div class="py-4 space-y-2 flex flex-col">
 			<span>I got this loaf of Rosemary Olive from Purebread last Saturday.</span>			
 			<div>This is what's left of it after a day and a half:</div>
@@ -34,4 +33,4 @@ import Toasters from '../../components/Toasters.jsx';
 			</div>
 		</div>
 	</div>
-</html>
+</Base>
