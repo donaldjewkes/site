@@ -1,52 +1,37 @@
 ---
+import Base from "../../components/Base.astro";
 const {link, image, text} = Astro.props
 import { Image, Picture } from '@astrojs/image/components';
 import DirHeader from "../../components/DirHeader.astro";
 import PhotoDirectory from '../../components/PhotoDirectory.astro';
+import BackArrow from "../../components/BackArrow.astro";
 const grizz = import('/public/images/vancouver/van1.jpg')
 // import testing from "../dol.png" don't like this import
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Donald Jewkes</title>
-	</head>
-	<style>
-		@import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
-	</style>
 
+
+<Base title = "Photos of San Fransisco and surrounding areas." description ="Photos from walks in SF by Donald Jewkes.">
 	<DirHeader id="top"></DirHeader>
-	
-	<div class="p-4 max-w-md">
-		<!-- build into component -->
-		<a class="group flex flex-row justify-start items-center mb-2" href="/photos">
-			<div>
-				<img class="h-3 mr-2 rotate-180" src="/images/icons/next.svg" alt="An left-arrow icon.">
+		
+		<div class="p-4 max-w-2xl">
+			<!-- build into component -->
+			<BackArrow text="photos" link="/photos"/>
+			<div class="flex flex-col w-full items-center justify-center">
+				<Image width={600} class="relative py-1 w-full" src={import('/public/images/sf/sfp8.jpg')} alt="A bright house in San Fransisco."></Image>
+				<Image width={600} class="relative py-1 w-full" src={import('/public/images/sf/sfp2.jpg')} alt="A man talking to someone in a car."></Image>
+				<Image width={600} class="relative py-1 w-full" src={import('/public/images/sf/sfp3.jpg')} alt="Someone walking quickly in San Fransisco."></Image>
+				<Image width={600} class="relative py-1 w-full" src={import('/public/images/sf/sfp4.jpg')} alt="An old man holding flowers by a cathedral."></Image>
+				<Image width={600} class="relative py-1 w-full" src={import('/public/images/sf/sfp6.jpg')} alt="A man leaning against a building and thinking."></Image>
+				<Image width={600} class="relative py-1 w-full" src={import('/public/images/sf/sfp9.jpg')} alt="Roman architecture."></Image>
 			</div>
-			<div class="flex flex-col items-start justify-start">
-				<div class=" text-neutral-500">photos</div>
-				<div class="w-0 group-hover:w-full h-0.5 bg-dgreen btransition-all duration-300"></div>
-			</div>
-		</a>
-		<Image width={500} class="relative py-1 w-92" src={import('/public/images/sf/sfp8.jpg')} alt="A bright house in San Fransisco."></Image>
-		<Image width={500}  class="relative py-1 w-92" src={import('/public/images/sf/sfp1.jpg')} alt="A man standing by the bus station."></Image>
-		<Image width={500} class="relative py-1 w-92" src={import('/public/images/sf/sfp2.jpg')} alt="A man talking to someone in a car."></Image>
-		<Image width={500} class="relative py-1 w-92" src={import('/public/images/sf/sfp3.jpg')} alt="Someone walking quickly in San Fransisco."></Image>
-		<Image width={500} class="relative py-1 w-92" src={import('/public/images/sf/sfp4.jpg')} alt="An old man holding flowers by a cathedral."></Image>
-		<Image width={500} class="relative py-1 w-92" src={import('/public/images/sf/sfp6.jpg')} alt="A man leaning against a building and thinking."></Image>
-		<Image width={500} class="relative py-1 w-92" src={import('/public/images/sf/sfp9.jpg')} alt="Roman architecture."></Image>
-
-
-		<a class="group flex flex-row justify-start items-center mb-2" href="#top">
-			<div>
-				<img class="h-3 mr-2 -rotate-90" src="/images/icons/next.svg" alt="An up-arrow icon.">
-			</div>
-			<div class="flex flex-col items-start justify-start">
-				<div class=" text-neutral-500">top</div>
-				<div class="w-0 group-hover:w-full h-0.5 bg-dgreen btransition-all duration-300"></div>
-			</div>
-		</a>
-	</div>
-	
-</html>
+			<a class="group flex flex-row justify-start items-center mb-2" href="#top">
+				<div>
+					<img class="h-3 mr-2 -rotate-90" src="/images/icons/next.svg" alt="An up-arrow icon.">
+				</div>
+				<div class="flex flex-col items-start justify-start">
+					<div class=" text-zinc-600">top</div>
+					<div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300"></div>
+				</div>
+			</a>
+		</div>
+</Base>
