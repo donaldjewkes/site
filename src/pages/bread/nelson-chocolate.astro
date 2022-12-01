@@ -1,33 +1,30 @@
 ---
-import MetaData from "../../components/MetaData.astro";
+import Base from "../../components/Base.astro";
 import DirHeader from "../../components/DirHeader.astro";
 import Toasters from '../../components/Toasters.jsx';
+import BreadPage from "../../components/BreadPage.astro";
+import { Image, Picture } from '@astrojs/image/components';
+const items = ['bread', 'dog']
 ---
 
-<html lang="en">
-	<MetaData title="Dark Chocolate Sourdough - Vancouver Bread Reviews" 
-		description="Dark Chocolate Sourdough bread review from Nelson the Seagull in Vancouver, Canada."></MetaData>
+<Base title="Dark Chocolate Sourdough from Nelson the Seagull - Vancouver Bread Reviews" 
+		description="Dark Chocolate Sourdough bread review from Nelson the Seagull in Vancouver, Canada.">
 	<DirHeader></DirHeader>
 
-
-	<div class="p-6 max-w-lg">
-		<h1 class="text-xl font-bold">Dark Chocolate Sourdough</h1>
-		<h2 class="font-light text-neutral-500"><span class="text-xs italic">from</span> <a class="underline" href="https://www.nelsontheseagull.com/">Nelson the Seagull</a></h2>
-		<div class="py-4 space-y-2 flex flex-col">
+	<BreadPage bread="Dark Chocolate Sourdough" bakery="Nelson the Seagull" image={import("/public/images/bread/nelson-chocolate2.jpg")} 
+	link="https://www.nelsontheseagull.com/" toasters={7} alt="A dark chocolate sourdough.">
+		<div slot="pre-image" class="space-y-3">
 			<span>This loaf came recommended from a friend.</span>			
-			<div>I picked this up on a rainy Thursday morning before work.</div>
-			<div>The loaf was still warm which made the walk home pleasant.</div>
-			<div class="py-2 relative flex flex-col items-center sm:items-start">
-				<img class="h-72 w-72 object-cover rounded" src="/images/bread/nelson-chocolate2.jpg">
-				<Toasters numToasters={8}/>
-			</div>
+			<div>I picked it up on a rainy Thursday morning before work.</div>
+			<div>The bread was still warm which made the walk home pleasant.</div>
+		</div>
+		<div slot="post-image" class="space-y-2">
 			<div>This sourdough was particularly pretty. It was reminiscent of a dark rye but there were visible pockets of chocolate throughout.</div>
 			<div class="">There is a nutty bitterness that will appease dark chocolate enthusiasts. I found the chocolate gave the crumb a nice moisture. 
 			</div>
 			<div class="">
 				I enjoyed this bread most toasted with a light coating of warm peanut butter.
 			</div>
-
 		</div>
-	</div>
-</html>
+	</BreadPage>
+</Base>
