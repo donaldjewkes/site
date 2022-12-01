@@ -5,7 +5,7 @@ import { Image, Picture } from '@astrojs/image/components';
 <a href={link}>
     <div class="flex flex-row items-center group">
         <div class="flex flex-col items-center justify-center">
-            <div class="absolute bg-amber-400 group-hover:bg-dgreen transition-all duration-300 rounded h-8 w-8"></div>
+            <div class="absolute bg-primary group-hover:bg-secondary transition-all duration-300 rounded h-8 w-8"></div>
             <img class="relative h-10 w-10" src={image} alt={alt}>
             <!-- <Image width={75} class="relative h-10 w-10" src={image} alt="icon"></Image> -->
         </div>
@@ -16,10 +16,10 @@ import { Image, Picture } from '@astrojs/image/components';
             <img class="w-3 h-3 mx-2" src="/images/icons/next.svg" alt="An right-arrow icon.">
         </div>
         <div class="relative flex flex-col">
-            <div class="grup-hover:underline decoration-double decoration-dgreen decoration-2 underline-offset-4 transition-all duration-300">
+            <div class="text-zinc-800 grup-hover:underline decoration-double decoration-secondary decoration-2 underline-offset-4 transition-all duration-300">
                 {text}
             </div>
-            <div class="w-0 group-hover:w-full h-0.5 bg-dgreen btransition-all duration-300">
+            <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300">
             </div>
         </div>
         <!-- <div>
