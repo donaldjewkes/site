@@ -13,7 +13,12 @@ module.exports = {
           'mono': ['"Noto Sans Mono"', 'monospace'],
         },
         colors: {
-          dgreen: '#465234'
+          secondary: '#3E8DA7',
+          primary: '#F5C089',
+          lblue: '#87B9CA',
+          dblue: '#2B3A40',
+          dbeige: '#8C6E4F'
+
         },
       },
     },
