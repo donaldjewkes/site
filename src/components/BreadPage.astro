@@ -3,13 +3,13 @@ const {bread, bakery, image, toasters, alt, bakeryLink} = Astro.props;
 import Toasters from '../components/Toasters.jsx';
 import { Image, Picture } from '@astrojs/image/components';
 ---
-<div class="p-6 max-w-lg">
+<div class="p-6">
     <h1 class="text-xl font-bold text-zinc-800">{bread}</h1>
     <h2 class="font-light text-zinc-600"><span class="text-xs italic">from</span> <a class="underline" href={bakeryLink}>{bakery}</a></h2>
     <div class="py-4 space-y-2 flex flex-col">
         <slot name="pre-image" class=""></slot>
         <div class="py-6 relative flex flex-col items-center sm:items-start">
-            <Image width={500} height={500} class="w-72 object-cover rounded" src={image} alt={alt}></Image>
+            <Image width={500} height={500} class="w-80 object-cover object-center rounded" src={image} alt={alt}></Image>
             <Toasters numToasters={toasters}/>
         </div>
         <slot name="post-image"></slot>
