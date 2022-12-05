@@ -3,29 +3,35 @@ import Base from "../components/Base.astro";
 const {link, image, text} = Astro.props
 import { Image, Picture } from '@astrojs/image/components';
 import DirHeader from "../components/DirHeader.astro";
+import Link from "../components/Link.astro"
 ---
 <html lang="en">
 	<Base title="Donald Jewkes - About" 
 		description="I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences.">
 	<DirHeader></DirHeader>
 	
-		<div class="p-4 lg:py-6 max-w-2xl">
-			<div class="flex flex-row items-center max-w-sm">
-				<Image width={200} height={200} class="relative rounded h-14 w-14" src={import("/public/images/icons/dol_icosm.jpg")} alt="icon"></Image>
-				<div class="absolute mt-2 ml-1 -z-10 rounded h-14 w-14 bg-primary"></div>
+		<div class="p-4 lg:py-6 max-w-2x text-zinc-800">
+			<div class="flex flex-row items-center ">
+				<img class="relative rounded h-24 w-24	" src="/images/icons/donaldicon.jpg">
+				<!-- <Image width={200} height={200} class="relative rounded h-16 w-16" src={import("/public/images/icons/dol_icosm.jpg")} alt="icon"></Image> -->
+				<!-- <div class="absolute mt-2 ml-1 -z-10 rounded h-16 w-16 bg-primary"></div> -->
 				<div class="pl-4">
-					<div class="">Hey, I'm Donald.</div>
+					<div class="font-bold ">Hey, I'm Donald.</div>
 					<div class="">I live in Vancouver, Canada.</div>
 				</div>
 			</div>
 			
-			<div class="pt-4">
-				<span>I'm a developer at </span>
-				<a class="text-secondary underline hover:text-primary" target="_blank" rel="noreferrer noopener" href="http://www.motionhall.com">MotionHall</a>.
-				<span> We are working to accelerate the rate of tech transfer in the life sciences.</span>
+			<div class="pt-4 text-zinc-600 space-y-2">
+				<div>
+					<span>I'm a developer at </span>
+					<Link href="http://www.motionhall.com" text="MotionHall" nt="1"></Link>.
+					<span>We are working to accelerate tech transfer in the life sciences. Recently I've been building infrastructure to track intellectual property across the pharmaceutical industry.</span>
+				</div>
+				<div class="">I've also been learning about biotech R&D, transactions, and regulatory pathways.</div>
+				<div>You can see some of the projects I've worked on in the past <Link href="/projects" text="here"/>. Sometimes I write about <Link href="/bread" text="bread"/> or shoot <Link href="/photos" text="photos"/></div>
 			</div>
-			<div class="pt-4 font-light text-neutral-600 text-sm ">Contact:</div>
-			<div class="">donaldjewkes [at] gmail [dot] com</div>
+			<div class="pt-6 text-neutral-800 font-bold " id="contact">Get in touch</div>
+			<div class="text-zinc-600">donaldjewkes [at] gmail [dot] com</div>
 		</div>
 	</Base>
 
