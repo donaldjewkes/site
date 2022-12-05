@@ -1,0 +1,29 @@
+---
+import Base from "../../components/Base.astro";
+import DirHeader from "../../components/DirHeader.astro";
+import Toasters from '../../components/Toasters.jsx';
+import BreadPage from "../../components/BreadPage.astro";
+import { Image, Picture } from '@astrojs/image/components';
+const items = ['bread', 'dog']
+---
+
+<Base title="Cinnamon Raisin from Fife - Vancouver Bread Reviews" 
+		description="Cinnamon Raisin bread review from Fife in Vancouver, Canada.">
+	<DirHeader></DirHeader>
+
+	<BreadPage bread="Cinnamon Raisin" bakery="Fife Bakery" image={import("/public/images/bread/fife-frenchtoast.jpg")}  toasters={8} alt="A dark chocolate sourdough." link="https://fifebakery.square.site/">
+		<div slot="pre-image" class="space-y-3">
+			<div>I went to Fife twice before actually getting in. Notably, Fife is a bakery that doesn't open before 9am. After trying their bread I realized <i>they don't need</i> to open before 9am.</div>			
+			<div>This mid November saturday morning the low fall light fell through my blinds. I owed it to myself to experience this pocket of sun as it was preceeded by a week of Vancouver gray.</div>
+			<div>I saw multiple bright puffers tucked under arms as I made my way towards Mount Pleasant. I delayered as well. Today was reminiscent of late september warmth.</div>
+			<div>There was a line outside of Fife when I landed around 9:30am. After a short wait I made my way into the cozy interior. 
+				Regulars occupied the limited seating areas and chatted with the barista. When I inquired, she recommended that I try the cinnamon raisin loaf, one of their seasonal offerings.</div>
+		</div>
+		<div slot="post-image" class="space-y-3">
+			<div>I tore off some chunks of this on the walk home. The crumb was warm, doughy and delicious. I made french toast with it the next morning. The cinnamon raisin flavour was subtle, but the bread was still delicious.
+			</div>
+			<div>
+			</div>
+		</div>
+	</BreadPage>
+</Base>

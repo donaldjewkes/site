@@ -1,0 +1,45 @@
+---
+import Base from "../../components/Base.astro";
+const {link, image, text} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+import DirHeader from "../../components/DirHeader.astro";
+import PhotoDirectory from '../../components/PhotoDirectory.astro';
+import BackArrow from "../../components/BackArrow.astro";
+import Link from "../../components/Link.astro"
+
+const grizz = import('/public/images/vancouver/van1.jpg')
+// import testing from "../dol.png" don't like this import
+---
+
+
+<Base title = "Liven Protein Kefir" description ="Liven Protein Kefir - Canada's first post-workout probiotic.">
+	<DirHeader id="top"></DirHeader>
+		
+		<div class="p-4 max-w-2xl">
+			<!-- build into component -->
+			<!-- <Image width={500} class="rounded relative w-full h-44 object-cover object-bottom" src={import("/public/images/pages/wtwmposter.png")} alt="icon"></Image> -->
+ 
+			<div class="flex flex-row items-center">
+				<h1 class="text-xl font-bold text-zinc-800">Liven Protein Kefir</h1>
+				<a href="https://youtu.be/EcSrf1C7smA" target="_blank" rel="noreferrer noopener"><img class="ml-2 h-6 w-6" src="/public/images/icons/livenlogo.png"></a>
+			</div>
+			<div class="text-zinc-600 pt-3">
+				I co-founded <Link href="https://livenprotein.ca/" text="Liven"></Link> with my friend <Link href="https://www.linkedin.com/in/richard-grant-2b4003253/" text="Richard"></Link>. 
+				We made a post-workout probiotic that combines 30 grams of protein with traditionally fermented milk Kefir.
+				<div class=""></div>
+			</div>
+			<div class="pt-3 text-zinc-600">
+				
+			</div>
+			<img class="rounded" src="/images/pages/spark.jpg">
+			<div class="text-zinc-600 pt-6">
+				You can watch the full film <a class="underline" target="_blank" rel="noreferrer noopener" href="https://youtu.be/EcSrf1C7smA">here</a>.
+			</div>
+			
+			<div class="pt-6 flex flex-col items-start justify-center">
+				<div class="my-2 w-48 border-b border-zinc-300">
+				</div>
+				<BackArrow class="" text="projects" link="/projects"/>
+			</div>
+		</div>
+</Base>
