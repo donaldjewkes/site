@@ -1,0 +1,6 @@
+---
+const {href, text, nt} = Astro.props
+---
+{nt ? <a class="text-secondary underline hover:text-primary"  href={href} target="_blank" rel="noreferrer noopener">{text}</a> :
+<a class="text-secondary underline hover:text-primary"  href={href}>{text}</a> }
+
