@@ -1,0 +1,89 @@
+---
+import Base from "../../components/Base.astro";
+const {link, image, text} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+import DirHeader from "../../components/DirHeader.astro";
+import PhotoDirectory from '../../components/PhotoDirectory.astro';
+import BackArrow from "../../components/BackArrow.astro";
+import Link from "../../components/Link.astro";
+const grizz = import('/public/images/vancouver/van1.jpg')
+// import testing from "../dol.png" don't like this import
+---
+
+
+<Base title = "Where the Waters Meet" description ="Where the Waters Meet - a film by Donald Jewkes and Evan Perry.">
+	<DirHeader id="top"></DirHeader>
+		
+		<div class="p-4 max-w-2xl">
+			<!-- build into component -->
+			<!-- <Image width={500} class="rounded relative w-full h-44 object-cover object-bottom" src={import("/public/images/pages/wtwmposter.png")} alt="icon"></Image> -->
+ 
+			<div class="flex flex-row items-center">
+				<h1 class="text-xl font-bold text-zinc-800">Where the Waters Meet</h1>
+				<a href="https://youtu.be/EcSrf1C7smA" target="_blank" rel="noreferrer noopener">
+					<img class="ml-2 h-6 w-6" src="/public/images/icons/WTWM_LOGO.svg">
+				</a>
+			</div>
+			
+			<div class="text-zinc-600 space-y-3">
+				<div class="pt-3">
+					In January 2020 there was an application submitted by <Link href="https://www.townpointoysters.com/" text="Town Point Oysters" nt="t"></Link> to develop an oyster aquaculture farm in Antigonish Harbour.
+					Shortly after, the community group <Link href="https://friendsofantigonishharbour.com/home" text="Friends of Antigonish Harbour" nt="t"></Link> was formed to oppose the application.
+				</div>
+				<div class="py-3"><iframe class="w-full rounded " height="270px" src="https://www.youtube.com/embed/eblw6X22_m4?modestbranding=1&amp;rel=0&amp;showinfo=0" title="YouTube video player" frameborder=""  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope;" allowfullscreen></iframe></div>
+				<div>
+					My friend <Link href="https://www.instagram.com/evanperry11/" text="Evan" nt="t"></Link> and I created <Link href="https://youtu.be/EcSrf1C7smA" text="Where the Waters Meet" nt="t"></Link>, a feature length documentary that aims to distill truth by exploring a diverse set of perspectives on the farm.
+						Our goal was to have a more informed public on an important community issue.
+				</div>
+				<div>
+					We interviewed involved community members to capture their opinions on the environmental, sociological, and economic implications. Some of the topics of conversation were:
+					<ul class="py-4 pl-10 list-[disc] space-y-2">
+						<li>The politics of development</li>
+						<li><Link href="https://en.wikipedia.org/wiki/NIMBY#Nova_Scotia" text="NIMBY" nt="t"/>ism</li>
+						<li><Link href="https://en.wikipedia.org/wiki/Tragedy_of_the_commons" text="The Tragedy of the Commons" nt="t"/></li>
+						<li><Link href="https://www.onens.ca/about-onens" text="The Ivany Report" nt="t"/></li>
+						<li>Environmental concerns
+							<ul class="pl-4 py-1 list-[circle] space-y-2">
+									<li><Link href="https://en.wikipedia.org/wiki/Nutrient_pollution" text="Nutrient loading" nt="t"/></li>
+									<li><Link href="https://www.dfo-mpo.gc.ca/videos/oyster-farming-ostreiculture-eng.html" text="Eelgrass shading" nt="t"/></li>
+									<li><Link href="https://en.wikipedia.org/wiki/Carbon_sequestration" text="Carbon sequestration" nt="t"/></li>
+							</ul>
+						</li>
+						<li><Link href="https://novascotia.ca/fish/aquaculture/licensing-leasing/" text="NSDFA regulation" nt="t"/></li>
+					</ul>
+				</div>
+				<div>
+					In the early stages of filming, Evan and I focused on mitigating personal bias. As we progressed, we realized that our attempts to entirely remove bias would be in vain. Through our creative decisions, we would inevitably be reflected in the project. 
+				</div>
+				<div>
+					Pursuing something negatively defined like <i>trying to be unbiased</i> intuitively made less sense to us than pursuing truth. Our job as filmmakers became determining <i>what is real</i>. There's overlap between mitigating bias and pursuing truth, but we found that focusing on the pursuit of truth was a useful reframing of objectives.
+				</div>
+				<div>
+					In a lot of cases, dialogue in interviews veered away from what was empirically falsifiable. In those cases, we became curators of opinions. We aimed to be comprehensive and fair in our representation of perspectives. It became up to the public to discern the truth.
+				</div>
+				<div>
+					In March of 2022 the <i>Where the Waters Meet</i> was screened for the community in the Barrick auditorium at StFX University. There was an additional screening done in lab for the aquatic resources department. The full project is available to watch <Link href="https://youtu.be/EcSrf1C7smA" text="here" nt="t"/>.
+				</div>
+				<div>
+					We're thankful to the following for making this project possible:
+					<div class="flex flex-col sm:flex-row justify-around items-center pt-6  space-y-6 sm:space-y-0">
+						<div>
+							<img src="/public/images/icons/stfx.png" class="rounded h-14 object-cover object-center">
+						</div>
+						<div class="text-xl font-bold">
+							Kingsley Brown
+						</div>
+						<div>
+							<img src="/public/images/icons/onenfb.svg" class="rounded h-10 object-cover object-center">
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<div class="pt-6 flex flex-col items-start justify-center">
+				<div class="my-2 w-48 border-b border-zinc-300">
+				</div>
+				<BackArrow class="" text="projects" link="/projects"/>
+			</div>
+		</div>
+</Base>
