@@ -1,0 +1,35 @@
+---
+const {link, image, text, sub, alt, wtwm} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+---
+<a href={link}>
+    <div class="py-1 flex flex-row items-center group">
+        <div class="flex flex-col items-center justify-center">
+            { (wtwm == "true") ? 
+            <div class="absolute bg-primary group-hover:bg-secondary transition-all duration-300 rounded-full h-6 w-6 "></div>
+            <div class="absolute bg-zinc-100 transition-all duration-300  h-8 w-5 mr-3 "></div>
+            <div class="absolute bg-zinc-100 transition-all duration-300  h-8 w-5 ml-1 mt-4 rotate-90"></div>
+            <div class="absolute bg-white transition-all duration-300 rounded h-6 w-4 mr-12 mb-7 rotate-45"></div>
+            : <div class="absolute bg-primary group-hover:bg-secondary transition-all duration-300 rounded  h-8 w-8 rotate-45"></div>
+            }
+            <!-- <img class="relative h-10 w-10" src={image} alt={alt}> -->
+            <img class="rounded relative h-10 w-10 object-cover object-center" src={image} alt={alt}/>
+        </div>
+        <div>
+            <img class="h-3 mx-2" src="/images/icons/next.svg" alt="An right-arrow icon.">
+        </div>
+        <div class="relative flex flex-col">
+            <div class="grup-hover:underline font-bold decoration-double decoration-secondary decoration-2 underline-offset-4 transition-all duration-300">
+                {text}
+            </div>
+            <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300">
+            </div>
+            <div class="text-sm text-zinc-600">
+                {sub}
+            </div>
+        </div>
+        <!-- <div>
+            <img class="h-4" src="/images/icons/next.svg">
+        </div> -->
+    </div>
+</a>
