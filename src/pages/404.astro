@@ -1,0 +1,46 @@
+---
+import Base from "../components/Base.astro";
+const {link, image, text} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+import DirHeader from "../components/DirHeader.astro";
+import Link from "../components/Link.astro";
+import Record from "../components/Record.jsx";
+---
+<html lang="en">
+	<Base title="Donald Jewkes - About" 
+		description="I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences.">
+	<DirHeader></DirHeader>
+	
+		<div class="p-4 lg:py-6 max-w-2x text-zinc-800">
+			<div class="flex flex-col items-start ">
+				<div class="text-lg font-bold pb-4">Hey, welcome to the loft.</div>
+				<Image width={600} class="relative rounded w-full h-52 sm:h-96 object-cover" src={import("/public/images/pages/loft2.png")} alt="icon"></Image>
+				<!-- <div class="absolute mt-2 ml-1 -z-10 rounded h-16 w-16 bg-primary"></div> -->
+				
+			</div>
+			
+			<div class="pt-4 text-zinc-600 space-y-2">
+					<div>Make yourself at home.</div>
+					<div>I'll put the kettle on for tea.</div>
+					<div>Feel free to grab something to read while you wait:</div>
+					<ul class="py-2 pl-10 list-[disc] space-y-2">
+						<li><Link href="https://www.schneier.com/blog/archives/2013/11/surveillance_as_1.html" text="Surveillance as a Business Model" nt="t"/></li>
+						<li><Link href="https://danluu.com/cocktail-ideas/" text="Cocktail Party Ideas" nt="t"/></li>
+						<li><Link href="https://www.celinehh.com/regulatory" text="Basics of Regulatory Affairs" nt="t"/></li>
+						<li><Link href="https://devonzuegel.com/post/we-should-be-building-cities-for-people-not-cars" text="We Should Be Building Cities for People, Not Cars" nt="t"/></li>
+						<li><Link href="https://guzey.com/how-life-sciences-actually-work/" text="How Life Sciences Actually Work" nt="t"/></li>
+					</ul>
+					<div class="pt-3">Here are some records, if you'd like to throw one on:</div>
+					<div class="py-3 flex flex-row w-full justify-around max-w-sm">
+						<iframe class="hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/4h5av08hHhOyyINApKfnEE?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+						<iframe class=" hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/07KJ48Y7pbXvz3Q4H44GZl?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+						<!-- <div class=""><iframe class="hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/2BRedpXNmL3NkN2eutmXZ2?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
+						<iframe class=" hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/6H9lWC3gxOefkRfDrxmlaB?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe> -->
+						<iframe class="hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/07bQPrG1jSRCkd9SvBXsy4?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+					</div>
+					<div class="py-3">Just let me know when you want to <Link href="/" text="head out" nt="t"/>.</div>
+			</div>
+		</div>
+	</Base>
+
+</html>
