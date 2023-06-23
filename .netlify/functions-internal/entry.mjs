@@ -1,8 +1,10 @@
 import * as adapter from '@astrojs/netlify/netlify-functions.js';
+import React, { createElement } from 'react';
+import ReactDOM from 'react-dom/server';
 import { escape } from 'html-escaper';
 import mime from 'mime';
 import sharp$1 from 'sharp';
-/* empty css                                 *//* empty css                                 */import 'http-cache-semantics';
+/* empty css                               */import 'http-cache-semantics';
 import 'kleur/colors';
 import 'node:fs/promises';
 import 'node:os';
@@ -12,10 +14,206 @@ import 'magic-string';
 import 'node:stream';
 import 'slash';
 import 'image-size';
-/* empty css                                  *//* empty css                                  *//* empty css                                 *//* empty css                                            *//* empty css                                     *//* empty css                                 */import 'cookie';
+import { jsxs, jsx } from 'react/jsx-runtime';
+import 'cookie';
 import 'string-width';
 import 'path-browserify';
 import { compile } from 'path-to-regexp';
+
+/**
+ * Astro passes `children` as a string of HTML, so we need
+ * a wrapper `div` to render that content as VNodes.
+ *
+ * As a bonus, we can signal to React that this subtree is
+ * entirely static and will never change via `shouldComponentUpdate`.
+ */
+const StaticHtml = ({ value, name }) => {
+	if (!value) return null;
+	return createElement('astro-slot', {
+		name,
+		suppressHydrationWarning: true,
+		dangerouslySetInnerHTML: { __html: value },
+	});
+};
+
+/**
+ * This tells React to opt-out of re-rendering this subtree,
+ * In addition to being a performance optimization,
+ * this also allows other frameworks to attach to `children`.
+ *
+ * See https://preactjs.com/guide/v8/external-dom-mutations
+ */
+StaticHtml.shouldComponentUpdate = () => false;
+
+const slotName$1 = (str) => str.trim().replace(/[-_]([a-z])/g, (_, w) => w.toUpperCase());
+const reactTypeof = Symbol.for('react.element');
+
+function errorIsComingFromPreactComponent(err) {
+	return (
+		err.message &&
+		(err.message.startsWith("Cannot read property '__H'") ||
+			err.message.includes("(reading '__H')"))
+	);
+}
+
+async function check$1(Component, props, children) {
+	// Note: there are packages that do some unholy things to create "components".
+	// Checking the $$typeof property catches most of these patterns.
+	if (typeof Component === 'object') {
+		const $$typeof = Component['$$typeof'];
+		return $$typeof && $$typeof.toString().slice('Symbol('.length).startsWith('react');
+	}
+	if (typeof Component !== 'function') return false;
+
+	if (Component.prototype != null && typeof Component.prototype.render === 'function') {
+		return React.Component.isPrototypeOf(Component) || React.PureComponent.isPrototypeOf(Component);
+	}
+
+	let error = null;
+	let isReactComponent = false;
+	function Tester(...args) {
+		try {
+			const vnode = Component(...args);
+			if (vnode && vnode['$$typeof'] === reactTypeof) {
+				isReactComponent = true;
+			}
+		} catch (err) {
+			if (!errorIsComingFromPreactComponent(err)) {
+				error = err;
+			}
+		}
+
+		return React.createElement('div');
+	}
+
+	await renderToStaticMarkup$1(Tester, props, children, {});
+
+	if (error) {
+		throw error;
+	}
+	return isReactComponent;
+}
+
+async function getNodeWritable() {
+	let nodeStreamBuiltinModuleName = 'stream';
+	let { Writable } = await import(/* @vite-ignore */ nodeStreamBuiltinModuleName);
+	return Writable;
+}
+
+async function renderToStaticMarkup$1(Component, props, { default: children, ...slotted }, metadata) {
+	delete props['class'];
+	const slots = {};
+	for (const [key, value] of Object.entries(slotted)) {
+		const name = slotName$1(key);
+		slots[name] = React.createElement(StaticHtml, { value, name });
+	}
+	// Note: create newProps to avoid mutating `props` before they are serialized
+	const newProps = {
+		...props,
+		...slots,
+	};
+	if (children != null) {
+		newProps.children = React.createElement(StaticHtml, { value: children });
+	}
+	const vnode = React.createElement(Component, newProps);
+	let html;
+	if (metadata && metadata.hydrate) {
+		if ('renderToReadableStream' in ReactDOM) {
+			html = await renderToReadableStreamAsync(vnode);
+		} else {
+			html = await renderToPipeableStreamAsync(vnode);
+		}
+	} else {
+		if ('renderToReadableStream' in ReactDOM) {
+			html = await renderToReadableStreamAsync(vnode);
+		} else {
+			html = await renderToStaticNodeStreamAsync(vnode);
+		}
+	}
+	return { html };
+}
+
+async function renderToPipeableStreamAsync(vnode) {
+	const Writable = await getNodeWritable();
+	let html = '';
+	return new Promise((resolve, reject) => {
+		let error = undefined;
+		let stream = ReactDOM.renderToPipeableStream(vnode, {
+			onError(err) {
+				error = err;
+				reject(error);
+			},
+			onAllReady() {
+				stream.pipe(
+					new Writable({
+						write(chunk, _encoding, callback) {
+							html += chunk.toString('utf-8');
+							callback();
+						},
+						destroy() {
+							resolve(html);
+						},
+					})
+				);
+			},
+		});
+	});
+}
+
+async function renderToStaticNodeStreamAsync(vnode) {
+	const Writable = await getNodeWritable();
+	let html = '';
+	return new Promise((resolve, reject) => {
+		let stream = ReactDOM.renderToStaticNodeStream(vnode);
+		stream.on('error', (err) => {
+			reject(err);
+		});
+		stream.pipe(
+			new Writable({
+				write(chunk, _encoding, callback) {
+					html += chunk.toString('utf-8');
+					callback();
+				},
+				destroy() {
+					resolve(html);
+				},
+			})
+		);
+	});
+}
+
+/**
+ * Use a while loop instead of "for await" due to cloudflare and Vercel Edge issues
+ * See https://github.com/facebook/react/issues/24169
+ */
+async function readResult(stream) {
+	const reader = stream.getReader();
+	let result = '';
+	const decoder = new TextDecoder('utf-8');
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) {
+			if (value) {
+				result += decoder.decode(value);
+			} else {
+				// This closes the decoder
+				decoder.decode(new Uint8Array());
+			}
+
+			return result;
+		}
+		result += decoder.decode(value, { stream: true });
+	}
+}
+
+async function renderToReadableStreamAsync(vnode) {
+	return await readResult(await ReactDOM.renderToReadableStream(vnode));
+}
+
+const _renderer1 = {
+	check: check$1,
+	renderToStaticMarkup: renderToStaticMarkup$1,
+};
 
 const ASTRO_VERSION = "1.6.8";
 
@@ -1461,6 +1659,17 @@ function createComponent(cb) {
   cb.isAstroComponentFactory = true;
   return cb;
 }
+function __astro_tag_component__(Component, rendererName) {
+  if (!Component)
+    return;
+  if (typeof Component !== "function")
+    return;
+  Object.defineProperty(Component, Renderer, {
+    value: rendererName,
+    enumerable: false,
+    writable: false
+  });
+}
 function spreadAttributes(values, _name, { class: scopedClassName } = {}) {
   let output = "";
   if (scopedClassName) {
@@ -1719,8 +1928,8 @@ const service = new SharpService();
 var sharp_default = service;
 
 const sharp = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: sharp_default
+	__proto__: null,
+	default: sharp_default
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const fnv1a52 = (str) => {
@@ -1805,60 +2014,86 @@ const get = async ({ request }) => {
 };
 
 const _page0 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  get
+	__proto__: null,
+	get
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const $$Astro$a = createAstro("/home/dol/donald/site/src/components/DirHeader.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
+var __freeze = Object.freeze;
+var __defProp = Object.defineProperty;
+var __template = (cooked, raw) => __freeze(__defProp(cooked, "raw", { value: __freeze(raw || cooked.slice()) }));
+var _a;
+const $$Astro$p = createAstro("/Users/donaldjewkes/site/src/components/Base.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Base = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$p, $$props, $$slots);
+  Astro2.self = $$Base;
+  const { title, description } = Astro2.props;
+  return renderTemplate(_a || (_a = __template(['<head>\n    <meta charset="utf-8">\n    <meta name="viewport" content="width=device-width">\n    <title>', '</title>\n    <meta name="description"', `>
+<meta name="google-site-verification" content="xEw0P5dx-_SXX7bqTGQomBICE9IIyFSRm2xoNr85ubY"><script type="text/partytown" async src="https://www.googletagmanager.com/gtag/js?id=G-S7FWS6FC94">
+    <\/script><script type="text/partytown"> 
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-S7FWS6FC94');
+    <\/script>`, '</head>\n    <!-- Google tag (gtag.js) -->\n    \n    \n    \n     \n\n    \n<div class="max-w-xl mx-auto w-full astro-G37H3N6Y">\n    ', "\n</div>\n\n"])), title, addAttribute(description, "content"), renderHead($$result), renderSlot($$result, $$slots["default"]));
+});
+
+const $$Astro$o = createAstro("/Users/donaldjewkes/site/src/components/DirHeader.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
 const $$DirHeader = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$a, $$props, $$slots);
+  const Astro2 = $$result.createAstro($$Astro$o, $$props, $$slots);
   Astro2.self = $$DirHeader;
-  return renderTemplate`${maybeRenderHead($$result)}<div class="relative h-14 w-full bg-dgreen mix-blend-multiply border-b border-black flex items-center">
-    <a href="/">
-        <div class="pl-4 flex flex-row items-center group">
-            <div class="flex flex-col items-center justify-center">
-                <div class="absolute bg-amber-400  group-hover:bg-dgree rounded-full transition-all duration-500 h-10 w-10 border-4 border-dgreen group-hover:border-white "></div>
-                <div class="absolute bg-dgreen group-hover:bg-white rounded-full transition-all duration-500 mb-2 -mr-0.5 h-3 w-4"></div>
-                <img class="relative h-10 w-10" src="/images/icons/dol.png" alt="icon">
-                <!-- <Image width={75} height={75} class="relative h-10 w-10" src={import("../dol.png")} alt="icon"></Image> -->
+  Astro2.props;
+  return renderTemplate`${maybeRenderHead($$result)}<div class="relative w-full mx-auto max-w-2xl mix-blend-multiply border-black flex items-center">
+    <a href="/" class="w-full">
+        <div class="flex flex-col items-start w-full">
+            <!-- <div class="absolute w-full rounded object-bottom object-cover">
+                <img class="-z-10 h-16 w-full object-top object-cover rounded" src="/images/pages/hero2.jpg">
+            </div> -->
+            <div class="pt-4 pb-2 h-12 pl-4 flex flex-row items-center group">
+                <div class="flex flex-col items-center justify-center">
+                    <div class="absolute  bg-primary border border-zinc-600 group-hover:bg-secondary rounded-full transition-all duration-300 h-10 w-10  "></div>
+                    <div class="absolute bg-primary group-hover:bg-secondar rounded-full transition-all duration-300 mb-2 -mr-0.5 h-3 w-4"></div>
+                    <img class="relative h-10 w-10" src="/images/icons/dol.png" alt="dol">
+                    <!-- <Image width={75} height={75} class="relative h-10 w-10" src={import("../dol.png")} alt="icon"></Image> -->
+                </div>
+                <div class="relative pl-3">
+                    <div class="text-zinc-800 font-bold text-lg grup-hover:underline decoration-double decoration-secondary decoration-2 underline-offset-4 transition-all duration-300">
+                        Donald Jewkes
+                    </div>
+                    <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300">
+                    </div>
+                </div>
             </div>
-            <div class="pl-3">
-                <div class="text-white grup-hover:underline decoration-double decoration-dgreen decoration-2 underline-offset-4 transition-all duration-300">
-                    Donald Jewkes
-                </div>
-                <div class="w-0 group-hover:w-full h-0.5 bg-white btransition-all duration-300">
-                </div>
+            <div class=" lg:mt-2 mx-auto  w-full border-b border-zinc-300">
             </div>
         </div>
     </a>
-    
 </div>`;
 });
 
-const $$Astro$9 = createAstro("/home/dol/donald/site/src/components/MainDirectory.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
+const $$Astro$n = createAstro("/Users/donaldjewkes/site/src/components/MainDirectory.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
 const $$MainDirectory = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$9, $$props, $$slots);
+  const Astro2 = $$result.createAstro($$Astro$n, $$props, $$slots);
   Astro2.self = $$MainDirectory;
   const { link, image, text, alt } = Astro2.props;
   return renderTemplate`${maybeRenderHead($$result)}<a${addAttribute(link, "href")}>
     <div class="flex flex-row items-center group">
         <div class="flex flex-col items-center justify-center">
-            <div class="absolute bg-amber-400 group-hover:bg-dgreen transition-all duration-300 rounded h-8 w-8"></div>
+            <div class="absolute bg-primary group-hover:bg-secondary transition-all duration-300 rounded h-8 w-8"></div>
             <img class="relative h-10 w-10"${addAttribute(image, "src")}${addAttribute(alt, "alt")}>
-
             <!-- <Image width={75} class="relative h-10 w-10" src={image} alt="icon"></Image> -->
         </div>
         <!-- <div class="p-2">
             -
         </div> -->
         <div>
-            <img class="h-3 mx-2" src="/images/icons/next.svg" alt="An right-arrow icon.">
+            <img class="w-3 h-3 mx-2" src="/images/icons/next.svg" alt="An right-arrow icon.">
         </div>
         <div class="relative flex flex-col">
-            <div class="grup-hover:underline decoration-double decoration-dgreen decoration-2 underline-offset-4 transition-all duration-300">
+            <div class="text-zinc-800 grup-hover:underline decoration-double decoration-secondary decoration-2 underline-offset-4 transition-all duration-300">
                 ${text}
             </div>
-            <div class="w-0 group-hover:w-full h-0.5 bg-dgreen btransition-all duration-500">
+            <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300">
             </div>
         </div>
         <!-- <div>
@@ -1867,43 +2102,6 @@ const $$MainDirectory = createComponent(async ($$result, $$props, $$slots) => {
     </div>
 </a>`;
 });
-
-const $$Astro$8 = createAstro("/home/dol/donald/site/src/pages/index.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
-const $$Index = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$8, $$props, $$slots);
-  Astro2.self = $$Index;
-  return renderTemplate`<html lang="en" class="astro-4B4HI35Q">
-	<head>
-		<meta name="google-site-verification" content="xEw0P5dx-_SXX7bqTGQomBICE9IIyFSRm2xoNr85ubY">
-		<meta name="description" content="Donald Jewkes - I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences.">
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<title>Donald Jewkes</title>
-	${renderHead($$result)}</head>
-	
-
-	${renderComponent($$result, "DirHeader", $$DirHeader, { "class": "astro-4B4HI35Q" })}
-
-	<div class="p-4 astro-4B4HI35Q">
-		<div class="flex flex-col space-y-1 items-start justify-center astro-4B4HI35Q">
-			${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/about", "image": "/images/icons/wave.png", "text": "me", "alt": "A waving hand.", "class": "astro-4B4HI35Q" })}
-			${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/bread", "image": "/images/icons/bread.png", "text": "bread", "alt": "A loaf of bread.", "class": "astro-4B4HI35Q" })}
-			${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/photos", "image": "/images/icons/camera.png", "text": "photos", "alt": "An old film camera.", "class": "astro-4B4HI35Q" })}
-			${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/thinks", "image": "/images/icons/thinking.png", "text": "thinks", "alt": "A man sitting and thinking.", "class": "astro-4B4HI35Q" })}
-		</div>
-	</div>
-</html>`;
-});
-
-const $$file$6 = "/home/dol/donald/site/src/pages/index.astro";
-const $$url$6 = "";
-
-const _page1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$Index,
-  file: $$file$6,
-  url: $$url$6
-}, Symbol.toStringTag, { value: 'Module' }));
 
 function resolveSize(transform) {
   if (transform.width && transform.height) {
@@ -2071,9 +2269,9 @@ async function getPicture(params) {
   };
 }
 
-const $$Astro$7 = createAstro("/home/dol/donald/site/node_modules/@astrojs/image/components/Image.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
+const $$Astro$m = createAstro("/Users/donaldjewkes/site/node_modules/@astrojs/image/components/Image.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
 const $$Image = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$7, $$props, $$slots);
+  const Astro2 = $$result.createAstro($$Astro$m, $$props, $$slots);
   Astro2.self = $$Image;
   const { loading = "lazy", decoding = "async", ...props } = Astro2.props;
   if (props.alt === void 0 || props.alt === null) {
@@ -2083,9 +2281,9 @@ const $$Image = createComponent(async ($$result, $$props, $$slots) => {
   return renderTemplate`${maybeRenderHead($$result)}<img${spreadAttributes(attrs)}${addAttribute(loading, "loading")}${addAttribute(decoding, "decoding")}>`;
 });
 
-const $$Astro$6 = createAstro("/home/dol/donald/site/node_modules/@astrojs/image/components/Picture.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
+const $$Astro$l = createAstro("/Users/donaldjewkes/site/node_modules/@astrojs/image/components/Picture.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
 const $$Picture = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$6, $$props, $$slots);
+  const Astro2 = $$result.createAstro($$Astro$l, $$props, $$slots);
   Astro2.self = $$Picture;
   const {
     src,
@@ -2136,357 +2334,843 @@ The "alt" attribute holds a text description of the image, which isn't mandatory
 `);
 }
 
-const $$Astro$5 = createAstro("/home/dol/donald/site/src/pages/photos.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
-const $$Photos = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$5, $$props, $$slots);
-  Astro2.self = $$Photos;
-  Astro2.props;
-  import('./chunks/van1.0e0b841d.mjs');
-  const bread = import('./chunks/tester.3387326f.mjs');
-  const icon = import('./chunks/tester.3387326f.mjs');
-  return renderTemplate`<html lang="en" class="astro-MVR4VJJR">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<title>Donald Jewkes</title>
-	${renderHead($$result)}</head>
-	
-
-	${renderComponent($$result, "DirHeader", $$DirHeader, { "id": "top", "class": "astro-MVR4VJJR" })}
-	
-	<div class="p-4 max-w-md astro-MVR4VJJR">
-		<div class=" astro-MVR4VJJR"></div>
-		<div class=" astro-MVR4VJJR">
-			<!-- <img class="relative py-1 w-92" src="/images/vancouver/van1.jpg" alt="Fishing for salmon.">
-			<img class="relative py-1 w-92" src="/images/vancouver/van2.jpg" alt="An eagle in flight">
-			<img class="relative py-1 w-92" src="/images/vancouver/van3.jpg" alt="A grizzly bear eating muscles on the beach.">
-			<img class="relative py-1 w-92" src="/images/vancouver/van4.jpg" alt="An orca swimming."> -->
-
-
-			${renderComponent($$result, "Image", $$Image, { "width": 500, "height": 100, "class": "relative py-1 w-92 astro-MVR4VJJR", "src": bread, "alt": "Fishing in a river." })}
-			${renderComponent($$result, "Image", $$Image, { "class": "relative py-1 w-92 astro-MVR4VJJR", "src": icon, "alt": "Fishing in a river." })}
-			${renderComponent($$result, "Image", $$Image, { "class": "relative py-1 w-92 astro-MVR4VJJR", "src": import('./chunks/tester.3387326f.mjs'), "alt": "Fishing in a river." })}
-			${renderComponent($$result, "Image", $$Image, { "width": 1e3, "class": "relative py-1 w-92 astro-MVR4VJJR", "src": bread, "alt": "A flying eagle" })}
-			${renderComponent($$result, "Image", $$Image, { "width": 750, "class": "relative py-1 w-92 astro-MVR4VJJR", "src": import('./chunks/van3.120f93d7.mjs'), "alt": "A grizzly bear eating muscles on the beach." })}
-			${renderComponent($$result, "Image", $$Image, { "width": 1e3, "class": "relative py-1 w-92 astro-MVR4VJJR", "src": import('./chunks/van4.e6a259e4.mjs'), "alt": "An orca swimming." })}
-
-		</div>
-		<a class="underline astro-MVR4VJJR" href="#top">Top</a>
-	</div>
-	
-
-
-
+const $$Astro$k = createAstro("/Users/donaldjewkes/site/src/pages/index.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Index = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$k, $$props, $$slots);
+  Astro2.self = $$Index;
+  return renderTemplate`<html lang="en">
+<!-- Welcome friend.-->
+<!--    ._____. ._____.-->
+<!--	| ._. | | ._. |-->
+<!--	| !_| |_|_|_! |-->
+<!--	!___| |_______!-->
+<!--	.___|_|_| |___.-->
+<!--	| ._____| |_. |-->
+<!--	| !_! | | !_! |-->
+<!--	!_____! !_____!-->
+<!-- Enjoy your stay.-->
+	 
+	${renderComponent($$result, "Base", $$Base, { "title": "Donald Jewkes", "description": "I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${maybeRenderHead($$result)}<div class="w-full mx-auto">
+			<div class="w-full mx-auto p-4">
+				<div class=" w-full flex flex-row items-center justify-between space-x-4">
+					<div class="flex flex-col space-y-1 items-start justify-center">
+						${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/about", "image": "/images/icons/wave.png", "text": "me", "alt": "A waving hand." })}
+						${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/bread", "image": "/images/icons/bread.png", "text": "bread", "alt": "A loaf of bread." })}
+						${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/photos", "image": "/images/icons/camera.png", "text": "photos", "alt": "An old film camera." })}
+						<!-- <MainDirectory link="/thinks" image="/images/icons/thinking.png" text="thinks" alt="A man sitting and thinking.">
+						</MainDirectory> -->
+						${renderComponent($$result, "MainDirectory", $$MainDirectory, { "link": "/projects", "image": "/images/icons/chisel.png", "text": "projects", "alt": "A chisel and a block." })}
+					</div>
+					<div class=" rounded">
+						${renderComponent($$result, "Image", $$Image, { "width": 300, "class": "relative rounded sm:w-full w-32 h-40 object-cover object-center opacity-90 ", "src": import('./chunks/church.cb9d8179.mjs'), "alt": "Saints Peter and Paul Church" })}
+					</div>
+				</div>	
+				<iframe id="Hey, I'm glad you found me. You should go listen to this song :) if you'd like you can -b checkout the /loft as well" class="hidden mt-4 opacity-10" style="border-radius:12px" src="https://open.spotify.com/embed/track/0S9lwd7JF9878QQ6tuuIQg?utm_source=generator&theme=0" width="100%" height="100" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>		
+			</div>
+		</div>` })}
 </html>`;
 });
 
-const $$file$5 = "/home/dol/donald/site/src/pages/photos.astro";
-const $$url$5 = "/photos";
+const $$file$e = "/Users/donaldjewkes/site/src/pages/index.astro";
+const $$url$e = "";
+
+const _page1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$Index,
+	file: $$file$e,
+	url: $$url$e
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const $$Astro$j = createAstro("/Users/donaldjewkes/site/src/pages/makesomethingsaturday.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Makesomethingsaturday = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$j, $$props, $$slots);
+  Astro2.self = $$Makesomethingsaturday;
+  Astro2.props;
+  return renderTemplate`<html lang="en">
+	${renderComponent($$result, "Base", $$Base, { "title": "Make something Saturday", "description": "What's going on in my brain." }, { "default": () => renderTemplate`${maybeRenderHead($$result)}<div class="p-4">
+			<div class="flex flex-col items-start justify-center space-y-2">
+				<div class="text-neutral-800 font-bold text-xl sm:text-2xl text-blue-600">Make something Saturday</div>
+				<img class="relative rounded" src="/images/misc/orbitallounge.webp" alt="dol">
+			</div>
+			<div class="pt-3">
+				<div class="pt-3">
+					<div class="font-bold">Welcome!</div>
+						
+					<div class="pt-3 text-lime-800 border border-zinc-800">I’m Donald, I’ll be hosting you at Orbital Lounge tomorrow. Orbital is at <a class="text-blue-600 underline" href="https://www.google.com/maps/place/58+Keefer+Pl,+Vancouver,+BC+V6B+0B8/@49.2792813,-123.1065474,17z/data=!3m1!4b1!4m6!3m5!1s0x5486717ba9779513:0xeafe1ab3246a54bc!8m2!3d49.2792813!4d-123.1065474!16s%2Fg%2F11c21vlt_2?entry=ttu">58 Keefer Pl</a>, right beside the Stadium Chinatown skytrain station. </div>
+
+					<div class="pt-3 text-neutral-700">We will be getting underway at 9:30. I ask that people don’t arrive after 10:00 unless they have made special arrangements. I need to come down and let people up - dm me on twitter once you have arrived outside the building. I will be wearing a flower shirt!</div>
+
+					<div class="pt-3 text-neutral-700">We will be conducting dedicated working blocks throughout the day. You are encouraged to work on something outside of your main responsibilities - but nothing is off the table. Responding to 100 emails is a totally great outcome.</div>
+
+					<div class="pt-3">
+						<div class="font-bold">Schedule:</div>
+						<ul class="list-inside list-disc text-neutral-700">
+						<li>9:30 - 10:00 arrive, hello, settle</li>
+						<li>10:00 - 11:00 work</li>
+						<li>11:00 - 11:15 break</li>
+						<li>11:15 - 12:15 work</li>
+						<li>12:15 - 1:15 lunch</li>
+						<li>1:15 - 2:15 work</li>
+						<li>2:15 - 4:00 free time (and opt-in showcase)</li>
+					</ul>
+					</div>
+
+					<div class="pt-3 text-neutral-700">We will be working in 1 hour time blocks with 15 minute breaks. All are encouraged to respect the scheduled time blocks but exercise your agency as you wish. Working hours will be low-interruptions indoors, please be respectful when people are heads down. As the host, I’ll be the exception, feel free to ask me questions anytime.</div>
+
+					<div class="pt-3"><div class="font-bold">Breaks:</div>
+						<div class="text-neutral-700">During break time, everything is fair game. I encourage people to congregate on the roof - but you are welcome to stay inside as well.</div></div>
+
+					<div class="pt-3 text-neutral-700"><div class="font-bold text-black">Lunch:</div> For those who are interested, I’ll be placing an order from Nuba. I will collect your orders during break time. If you participate, please etransfer me the amount of your order: donaldjewkes [at] gmail [dot] com</div>
+
+					<div class="pt-3 text-neutral-700"><div class="font-bold text-black">Refreshments:</div>Coffee, bubblys, pu'er tea, and snacks are available. If you're peckish, help yourself to anything in the fridge/cupboards/freezer.</div>
+
+
+					<div class="pt-3 text-neutral-700"><div class="text-black font-bold">Freetime / Showcase:</div> After our final working block, people have the opportunity to discuss or showcase what they have been working on. There will be a TV and an HDMI available. This is entirely opt-in; you’re not expected to have anything to showcase. For those interested, there will be free time until 4:00, after which we will part ways :)</div>
+
+					<div class="pt-3">
+						<div class="font-bold">Notes on spaces:</div>
+						<ul class="list-disc list-inside">
+						  <li>The common area: Most of the working space is here. Desks are first come first serve. Use the materials around you to make a suitable working environment. There will be light ambiance music playing.</li>
+						  <li>The roof: The roof will be a social environment throughout the day. You are welcome to work here but be open to interruptions. This will be a congregation point for breaks and for lunch.</li>
+						  <li>Upstairs: There are two available desks here, one of which is a treadmill desk.</li>
+						  <li>Solarium: there is a bed in here that’s good for sitting, laying, and thinking. You are welcome to use it.</li>
+						  <li>The bathroom: We have a shared bathroom at the base of the spiral stairs.</li>
+						  <li>Closed doors: I ask that you are respectful of privacy, closed doors are off limits.</li>
+						</ul>
+					  </div>
+					</div>
+
+					<div class="pt-3"><div class="font-bold">Misc:</div>
+					<ul class="list-inside list-disc"> 
+						<li><a class="text-blue-600 underline" href="https://ritual.co/order/nuba-gastown-hastings-cambie-vancouver/bcca?r=NUBA">Nuba's online menu</a></li>
+						<li><a class="text-blue-600 underline" href="https://twitter.com/donaldjewkes">Twitter for contact</a></li>
+
+						<img class="pt-3 w-48" src="/images/misc/wifi.png" alt="">
+					</ul>
+					</div>
+			</div>
+			
+		</div>` })}
+</html>`;
+});
+
+const $$file$d = "/Users/donaldjewkes/site/src/pages/makesomethingsaturday.astro";
+const $$url$d = "/makesomethingsaturday";
 
 const _page2 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$Photos,
-  file: $$file$5,
-  url: $$url$5
+	__proto__: null,
+	default: $$Makesomethingsaturday,
+	file: $$file$d,
+	url: $$url$d
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const $$Astro$4 = createAstro("/home/dol/donald/site/src/pages/thinks.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
-const $$Thinks = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$4, $$props, $$slots);
-  Astro2.self = $$Thinks;
-  Astro2.props;
-  return renderTemplate`<html lang="en" class="astro-6L3FUTOS">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<title>Donald Jewkes</title>
-	${renderHead($$result)}</head>
-	
-
-	${renderComponent($$result, "DirHeader", $$DirHeader, { "class": "astro-6L3FUTOS" })}
-	
-	<div class="p-4 astro-6L3FUTOS">
-		<div class=" astro-6L3FUTOS">Brain empty.</div>
-		<div class="font-light text-neutral-400 text-xs  astro-6L3FUTOS">Check back tomorrow.</div>
-	</div>
-</html>`;
+const $$Astro$i = createAstro("/Users/donaldjewkes/site/src/components/BackArrow.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$BackArrow = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$i, $$props, $$slots);
+  Astro2.self = $$BackArrow;
+  const { link, text } = Astro2.props;
+  return renderTemplate`${maybeRenderHead($$result)}<a class="group flex flex-row justify-start items-center mb-2"${addAttribute(link, "href")}>
+    <div>
+        <img class="h-3 mr-2 rotate-180" src="/images/icons/next.svg" alt="An left-arrow icon.">
+    </div>
+    <div class="flex flex-col items-start justify-start">
+        <div class=" text-zinc-600">${text}</div>
+        <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300"></div>
+    </div>
+</a>`;
 });
 
-const $$file$4 = "/home/dol/donald/site/src/pages/thinks.astro";
-const $$url$4 = "/thinks";
+const $$Astro$h = createAstro("/Users/donaldjewkes/site/src/components/Link.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Link = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$h, $$props, $$slots);
+  Astro2.self = $$Link;
+  const { href, text, nt } = Astro2.props;
+  return renderTemplate`${nt ? renderTemplate`${maybeRenderHead($$result)}<a class="text-secondary underline hover:text-primary"${addAttribute(href, "href")} target="_blank" rel="noreferrer noopener">${text}</a>` : renderTemplate`<a class="text-secondary underline hover:text-primary"${addAttribute(href, "href")}>${text}</a>`}`;
+});
+
+const $$Astro$g = createAstro("/Users/donaldjewkes/site/src/pages/projects/liven.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Liven = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$g, $$props, $$slots);
+  Astro2.self = $$Liven;
+  Astro2.props;
+  import('./chunks/van1.27d0cea1.mjs');
+  return renderTemplate`${renderComponent($$result, "Base", $$Base, { "title": "Liven Protein Kefir", "description": "Liven Protein Kefir - Canada's first post-workout probiotic." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, { "id": "top" })}${maybeRenderHead($$result)}<div class="p-4 max-w-2xl">
+			<!-- build into component -->
+			<!-- <Image width={500} class="rounded relative w-full h-44 object-cover object-bottom" src={import("/public/images/pages/wtwmposter.png")} alt="icon"></Image> -->
+ 
+			<div class="flex flex-row items-center">
+				<h1 class="text-xl font-bold text-zinc-800">Liven Protein Kefir</h1>
+				<a href="https://livenprotein.ca/" target="_blank" rel="noreferrer noopener"><img class="ml-2 h-6 w-6" src="/images/icons/livenlogo.png"></a>
+			</div>
+			<div class="text-zinc-600 pt-3 space-y-3">
+				I co-founded ${renderComponent($$result, "Link", $$Link, { "href": "https://livenprotein.ca/", "text": "Liven" })} with my friend ${renderComponent($$result, "Link", $$Link, { "href": "https://www.linkedin.com/in/richard-grant-2b4003253/", "text": "Richard" })}. 
+				We made a post-workout probiotic that combines the recovery benefits of protein with traditionally fermented milk Kefir.
+				<div class="">We bootstrapped a small scale production facility to meet dairy processing regulation and yield consistent 10L batches.</div>
+				<div>Liven won first place and $45000 of non dilutive funding at ${renderComponent($$result, "Link", $$Link, { "href": "https://www.stfx.ca/about/news/liven", "text": "Spark Nova Scotia 2021", "nt": "t" })}.</div>
+				
+			</div>
+			<div class="pt-3 text-zinc-600">
+				
+			</div>
+			<img class="rounded" src="/images/pages/spark.jpg">
+			
+			<div class="pt-6 flex flex-col items-start justify-center">
+				<div class="my-2 w-48 border-b border-zinc-300">
+				</div>
+				${renderComponent($$result, "BackArrow", $$BackArrow, { "class": "", "text": "projects", "link": "/projects" })}
+			</div>
+		</div>` })}`;
+});
+
+const $$file$c = "/Users/donaldjewkes/site/src/pages/projects/liven.astro";
+const $$url$c = "/projects/liven";
 
 const _page3 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$Thinks,
-  file: $$file$4,
-  url: $$url$4
+	__proto__: null,
+	default: $$Liven,
+	file: $$file$c,
+	url: $$url$c
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const $$Astro$3 = createAstro("/home/dol/donald/site/src/pages/about.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
-const $$About = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$3, $$props, $$slots);
-  Astro2.self = $$About;
+const $$Astro$f = createAstro("/Users/donaldjewkes/site/src/pages/projects/wtwm.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Wtwm = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$f, $$props, $$slots);
+  Astro2.self = $$Wtwm;
   Astro2.props;
-  return renderTemplate`<html lang="en" class="astro-C7AYS2FT">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<title>Donald Jewkes</title>
-		<meta name="description" content="Donald Jewkes - I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences.">
-	${renderHead($$result)}</head>
-	
-
-	${renderComponent($$result, "DirHeader", $$DirHeader, { "class": "astro-C7AYS2FT" })}
-	
-	<div class="p-4 max-w-md astro-C7AYS2FT">
-		<div class=" astro-C7AYS2FT">I live in Vancouver, Canada.</div> 
-		<div class="pt-2  astro-C7AYS2FT">
-			<span class="astro-C7AYS2FT">I'm a developer at </span>
-			<a class="text-dgreen underline hover:text-amber-400 astro-C7AYS2FT" href="http://www.motionhall.com">MotionHall.</a>
-			<span class="astro-C7AYS2FT"> We are working to accelerate the rate of tech transfer in the life sciences.</span>
-		</div>
-		<div class="pt-4 font-light text-neutral-400 text-xs  astro-C7AYS2FT">Contact:</div>
-		<div class=" astro-C7AYS2FT">donaldjewkes [at] gmail [dot] com</div>
-	</div>
-	
-
-</html>`;
+  import('./chunks/van1.27d0cea1.mjs');
+  return renderTemplate`${renderComponent($$result, "Base", $$Base, { "title": "Where the Waters Meet", "description": "Where the Waters Meet - a film by Donald Jewkes and Evan Perry." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, { "id": "top" })}${maybeRenderHead($$result)}<div class="p-4 max-w-2xl">
+			<!-- build into component -->
+			<!-- <Image width={500} class="rounded relative w-full h-44 object-cover object-bottom" src={import("/public/images/pages/wtwmposter.png")} alt="icon"></Image> -->
+ 
+			<div class="flex flex-row items-center">
+				<h1 class="text-xl font-bold text-zinc-800">Where the Waters Meet</h1>
+				<a href="https://youtu.be/EcSrf1C7smA" target="_blank" rel="noreferrer noopener">
+					<img class="ml-2 h-6 w-6" src="/images/icons/WTWM_LOGO.svg">
+				</a>
+			</div>
+			
+			<div class="text-zinc-600 space-y-3">
+				<div class="pt-3">
+					In January 2020 there was an application submitted by ${renderComponent($$result, "Link", $$Link, { "href": "https://www.townpointoysters.com/", "text": "Town Point Oysters", "nt": "t" })} to develop an oyster aquaculture farm in Antigonish Harbour.
+					Shortly after, the community group ${renderComponent($$result, "Link", $$Link, { "href": "https://friendsofantigonishharbour.com/home", "text": "Friends of Antigonish Harbour", "nt": "t" })} was formed to oppose the application.
+				</div>
+				<div class="py-3"><iframe class="w-full rounded " height="306px" src="https://www.youtube.com/embed/eblw6X22_m4?modestbranding=1&rel=0&showinfo=0" title="YouTube video player" frameborder="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope;" allowfullscreen></iframe></div>
+				<div>
+					My friend ${renderComponent($$result, "Link", $$Link, { "href": "https://www.instagram.com/evanperry11/", "text": "Evan", "nt": "t" })} and I created ${renderComponent($$result, "Link", $$Link, { "href": "https://youtu.be/EcSrf1C7smA", "text": "Where the Waters Meet", "nt": "t" })}, a feature length documentary that aims to distill truth by exploring a diverse set of perspectives on the farm.
+						Our goal was to have a more informed public on an important community issue.
+				</div>
+				<div>
+					We interviewed involved community members to capture their opinions on the environmental, sociological, and economic implications. Some of the topics of conversation were:
+					<ul class="py-4 pl-10 list-[disc] space-y-2">
+						<li>The politics of development</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://en.wikipedia.org/wiki/NIMBY#Nova_Scotia", "text": "NIMBY", "nt": "t" })}ism</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://en.wikipedia.org/wiki/Tragedy_of_the_commons", "text": "The Tragedy of the Commons", "nt": "t" })}</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://www.onens.ca/about-onens", "text": "The Ivany Report", "nt": "t" })}</li>
+						<li>Environmental concerns
+							<ul class="pl-4 py-1 list-[circle] space-y-2">
+									<li>${renderComponent($$result, "Link", $$Link, { "href": "https://en.wikipedia.org/wiki/Nutrient_pollution", "text": "Nutrient loading", "nt": "t" })}</li>
+									<li>${renderComponent($$result, "Link", $$Link, { "href": "https://www.dfo-mpo.gc.ca/videos/oyster-farming-ostreiculture-eng.html", "text": "Eelgrass shading", "nt": "t" })}</li>
+									<li>${renderComponent($$result, "Link", $$Link, { "href": "https://en.wikipedia.org/wiki/Carbon_sequestration", "text": "Carbon sequestration", "nt": "t" })}</li>
+							</ul>
+						</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://novascotia.ca/fish/aquaculture/licensing-leasing/", "text": "NSDFA regulation", "nt": "t" })}</li>
+					</ul>
+				</div>
+				<div>
+					In the early stages of filming, Evan and I focused on mitigating personal bias. As we progressed, we realized that our attempts to entirely remove bias would be in vain. Through our creative decisions, we would inevitably be reflected in the project. 
+				</div>
+				<div>
+					Pursuing something negatively defined like <i>trying to be unbiased</i> intuitively made less sense to us than pursuing truth. Our job as filmmakers became determining <i>what is real</i>. There's overlap between mitigating bias and pursuing truth, but we found that focusing on the pursuit of truth was a useful reframing of objectives.
+				</div>
+				<div>
+					In a lot of cases, dialogue in interviews veered away from what was empirically falsifiable. In those cases, we became curators of opinions. We aimed to be comprehensive and fair in our representation of perspectives. It became up to the public to discern the truth.
+				</div>
+				<div>
+					In March of 2022 Where the Waters Meet was screened for the community in the Barrick auditorium at StFX University. There was an additional screening done in lab for the aquatic resources department. The full film is available to watch ${renderComponent($$result, "Link", $$Link, { "href": "https://youtu.be/EcSrf1C7smA", "text": "here", "nt": "t" })}.
+				</div>
+				<div>
+					We're thankful to the following for making this project possible:
+					<div class="flex flex-col sm:flex-row justify-around items-center pt-6  space-y-6 sm:space-y-0">
+						<div>
+							<img src="/images/icons/stfx.png" class=" h-14 object-cover object-center">
+						</div>
+						<div class="text-xl font-bold">
+							Kingsley Brown
+						</div>
+						<div>
+							<img src="/images/icons/onenfb.svg" class=" h-10 object-cover object-center">
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<div class="pt-6 flex flex-col items-start justify-center">
+				<div class="my-2 w-48 border-b border-zinc-300">
+				</div>
+				${renderComponent($$result, "BackArrow", $$BackArrow, { "class": "", "text": "projects", "link": "/projects" })}
+			</div>
+		</div>` })}`;
 });
 
-const $$file$3 = "/home/dol/donald/site/src/pages/about.astro";
-const $$url$3 = "/about";
+const $$file$b = "/Users/donaldjewkes/site/src/pages/projects/wtwm.astro";
+const $$url$b = "/projects/wtwm";
 
 const _page4 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$About,
-  file: $$file$3,
-  url: $$url$3
+	__proto__: null,
+	default: $$Wtwm,
+	file: $$file$b,
+	url: $$url$b
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const $$Astro$2 = createAstro("/home/dol/donald/site/src/pages/bread/nelson-chocolate.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
-const $$NelsonChocolate = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$2, $$props, $$slots);
-  Astro2.self = $$NelsonChocolate;
-  return renderTemplate`<html lang="en" class="astro-ZBFUA4NS">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<meta name="description" content="Dark Chocolate Sourdough bread review from Nelson the Seagull in Vancouver, Canada.">
-		<title>Dol - Dark Chocolate</title>
-	${renderHead($$result)}</head>
-	
-	${renderComponent($$result, "DirHeader", $$DirHeader, { "class": "astro-ZBFUA4NS" })}
+const $$Astro$e = createAstro("/Users/donaldjewkes/site/src/components/ProjectDirectory.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$ProjectDirectory = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$e, $$props, $$slots);
+  Astro2.self = $$ProjectDirectory;
+  const { link, image, text, sub, alt, wtwm } = Astro2.props;
+  return renderTemplate`${maybeRenderHead($$result)}<a${addAttribute(link, "href")}>
+    <div class="py-1 flex flex-row items-center group">
+        <div class="flex flex-col items-center justify-center">
+            ${wtwm == "true" ? renderTemplate`<div class="absolute bg-primary group-hover:bg-secondary transition-all duration-300 rounded-full h-6 w-6 "></div><div class="absolute bg-zinc-100 transition-all duration-300  h-8 w-5 mr-3 "></div><div class="absolute bg-zinc-100 transition-all duration-300  h-8 w-5 ml-1 mt-4 rotate-90"></div><div class="absolute bg-white transition-all duration-300 rounded h-6 w-4 mr-12 mb-7 rotate-45"></div>` : renderTemplate`<div class="absolute bg-primary group-hover:bg-secondary transition-all duration-300 rounded  h-8 w-8 rotate-45"></div>`}
+            <!-- <img class="relative h-10 w-10" src={image} alt={alt}> -->
+            <!-- <Image width={75} class="rounded relative h-10 w-10 object-cover object-center" src={image} alt={alt}></Image> -->
+            <img class="rounded relative h-10 w-10 object-cover object-center"${addAttribute(image, "src")}${addAttribute(alt, "alt")}>
+        </div>
+        <div>
+            <img class="h-3 mx-2" src="/images/icons/next.svg" alt="An right-arrow icon.">
+        </div>
+        <div class="relative flex flex-col">
+            <div class="grup-hover:underline font-bold decoration-double decoration-secondary decoration-2 underline-offset-4 transition-all duration-300">
+                ${text}
+            </div>
+            <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300">
+            </div>
+            <div class="text-sm text-zinc-600">
+                ${sub}
+            </div>
+        </div>
+        <!-- <div>
+            <img class="h-4" src="/images/icons/next.svg">
+        </div> -->
+    </div>
+</a>`;
+});
 
-
-	<div class="p-6 max-w-lg astro-ZBFUA4NS">
-		<h1 class="text-xl font-bold astro-ZBFUA4NS">Dark Chocolate Sourdough</h1>
-		<h2 class="font-light text-neutral-500 astro-ZBFUA4NS"><span class="text-xs italic astro-ZBFUA4NS">from</span> <a class="underline astro-ZBFUA4NS" href="https://www.nelsontheseagull.com/">Nelson the Seagull</a></h2>
-		<div class="py-4 space-y-2 flex flex-col astro-ZBFUA4NS">
-			<span class="astro-ZBFUA4NS">This loaf came recommended from a friend.</span>			
-			<div class="astro-ZBFUA4NS">I picked this up on a rainy Thursday morning before work.</div>
-			<div class="astro-ZBFUA4NS">The loaf was still warm which made the walk home pleasant.</div>
-			<div class="py-4 relative flex flex-col items-center sm:items-start astro-ZBFUA4NS">
-				<img class="h-72 w-72 object-cover rounded astro-ZBFUA4NS" src="/images/bread/nelson-chocolate2.jpg">
-
-				<div class="pt-4 astro-ZBFUA4NS">
-					<div class="font-bold text-lg astro-ZBFUA4NS">Rating: 7/10 Toasters</div>
-					<div class="p-2 bg-lime-800/50 border border-neutral-500 inline-flex rounded space-x-1 astro-ZBFUA4NS">
-						<img class="h-6 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-ZBFUA4NS" src="/images/bread/toaster.png">
-					</div>
-				</div>
+const $$Astro$d = createAstro("/Users/donaldjewkes/site/src/pages/projects.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Projects = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$d, $$props, $$slots);
+  Astro2.self = $$Projects;
+  Astro2.props;
+  return renderTemplate`<html lang="en">
+	${renderComponent($$result, "Base", $$Base, { "title": "Donald Jewkes - Projects", "description": "Some of the things that I've done in the past" }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, { "id": "top" })}${maybeRenderHead($$result)}<div class="p-4">
+			<div>
+				My quality working hours are spent building <a class="text-secondary underline hover:text-primary" target="_blank" rel="noreferrer noopener" href="http://www.motionhall.com">MotionHall</a>. 
+				Here are some of the projects I've taken on in the past:
 			</div>
-			<div class="astro-ZBFUA4NS">This sourdough was particularly pretty. It was reminiscent of a dark rye but there were visible pockets of chocolate throughout.</div>
-			<div class=" astro-ZBFUA4NS">There is a nutty bitterness that will appease dark chocolate enthusiasts. I found the chocolate gave the crumb a nice moisture. 
-			</div>
-			<div class=" astro-ZBFUA4NS">
-				I enjoyed this bread most toasted with a light coating of warm peanut butter.
+			<div class="pt-4 ">
+				${renderComponent($$result, "ProjectDirectory", $$ProjectDirectory, { "class": "relative py-10", "link": "/projects/wtwm", "image": "/images/icons/WTWM_LOGO.svg", "text": "Where the Waters Meet", "sub": "A feature length documentary.", "alt": "Where the Waters Meet logo", "wtwm": "true" })}
+				${renderComponent($$result, "ProjectDirectory", $$ProjectDirectory, { "class": "relative py-10", "link": "/projects/liven", "image": "/images/icons/livenlogo.png", "text": "Liven Protein Kefir", "sub": "A post-workout probiotic.", "alt": "Liven Protein Kefir logo", "wtwm": "false" })}
+
+				<!-- <PhotoDirectory class="relative py-1" link="/photos/sf" image={import("/public/images/sf/sfp8.jpg")} text="Liven" alt="San Fransisco House."></PhotoDirectory> -->
+				<div class=""></div>
 			</div>
 
-		</div>
-	</div>
+		</div>` })}
 </html>`;
 });
 
-const $$file$2 = "/home/dol/donald/site/src/pages/bread/nelson-chocolate.astro";
-const $$url$2 = "/bread/nelson-chocolate";
+const $$file$a = "/Users/donaldjewkes/site/src/pages/projects.astro";
+const $$url$a = "/projects";
 
 const _page5 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$NelsonChocolate,
-  file: $$file$2,
-  url: $$url$2
+	__proto__: null,
+	default: $$Projects,
+	file: $$file$a,
+	url: $$url$a
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const $$Astro$1 = createAstro("/home/dol/donald/site/src/pages/bread/purebread.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
-const $$Purebread = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro$1, $$props, $$slots);
-  Astro2.self = $$Purebread;
-  return renderTemplate`<html lang="en" class="astro-MHUF2CIM">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<title>Dol - Rosemary Olive</title>
-		<meta name="description" content="Rosemary Olive bread review from Purebread in Vancouver, Canada.">
-	${renderHead($$result)}</head>
-	
-	${renderComponent($$result, "DirHeader", $$DirHeader, { "class": "astro-MHUF2CIM" })}
+const $$Astro$c = createAstro("/Users/donaldjewkes/site/src/pages/photos/vancouver.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Vancouver = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$c, $$props, $$slots);
+  Astro2.self = $$Vancouver;
+  Astro2.props;
+  import('./chunks/van1.27d0cea1.mjs');
+  return renderTemplate`${renderComponent($$result, "Base", $$Base, { "title": "Photos of Vancouver and surrounding areas.", "description": "Vancouver nature photos by Donald Jewkes." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, { "id": "top" })}${maybeRenderHead($$result)}<div class="p-4 max-w-2xl">
+		<!-- build into component -->
+		<a class="group flex flex-row justify-start items-center mb-2" href="/photos">
+			<div>
+				<img class="h-3 mr-2 rotate-180" src="/images/icons/next.svg" alt="An left-arrow icon.">
+			</div>
+			<div class="flex flex-col items-start justify-start">
+				<div class=" text-zinc-600">photos</div>
+				<div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300"></div>
+			</div>
+		</a>
+		<div class="flex flex-col w-full items-center justify-center space-y-4">
+			${renderComponent($$result, "Image", $$Image, { "width": 500, "class": "relative  w-full", "src": import('./chunks/van4.e6a259e4.mjs'), "alt": "An orca swimming." })}
+			${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative  w-full", "src": import('./chunks/van3.5e7c8c98.mjs'), "alt": "A grizzly bear eating muscles on the beach." })}
+			${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative  w-full", "src": import('./chunks/van1.27d0cea1.mjs'), "alt": "Kristian fishing for a Salmon" })}
+			${renderComponent($$result, "Image", $$Image, { "width": 500, "class": "relative  w-full", "src": import('./chunks/van2.616916f5.mjs'), "alt": "An eagle flying through the Knight inlet." })}
+		</div>
 
+		<a class="group flex flex-row justify-start items-center my-2" href="#top">
+			<div>
+				<img class="h-3 mr-2 -rotate-90" src="/images/icons/next.svg" alt="An up-arrow icon.">
+			</div>
+			<div class="flex flex-col items-start justify-start">
+				<div class=" text-zinc-600">top</div>
+				<div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300"></div>
+			</div>
+		</a>
+	</div>` })}`;
+});
 
-	<div class="p-4 max-w-lg astro-MHUF2CIM">
-		<h1 class="text-xl font-bold astro-MHUF2CIM">Rosemary Olive</h1>
-		<h2 class="font-light text-neutral-500 astro-MHUF2CIM"><span class="text-xs italic astro-MHUF2CIM">from</span> <a class="underline astro-MHUF2CIM" href="https://www.purebread.ca/">Purebread</a></h2>
-		<div class="py-4 space-y-2 flex flex-col astro-MHUF2CIM">
-			<span class="astro-MHUF2CIM">I got this loaf of Rosemary Olive from Purebread last Saturday.</span>			
-			<div class="astro-MHUF2CIM">This is what's left of it after a day and a half:</div>
-			<div class="relative flex flex-col items-center sm:items-start astro-MHUF2CIM">
-				<img class="h-72 w-72 my-4 object-cover rounded astro-MHUF2CIM" src="/images/bread/purebread-ro.jpg">
-				<!-- rating; unused -->
-				<!-- <div class="-ml-16 mt-2">
-					<div class="flex flex-col align-center justify-center ring-2 ring-lime-800/80 rounded">
-						<div class="flex flex-row p-2 px-2.5">
-							<div class="text-4xl font-bold">5</div>
-							<div class="pt-0.5 text-neutral-800/80 justify-self-start text-">.5</div>
-						</div>
-						<div class="border-t"></div>
-						<div class="text-lg text-center">10</div>
-					</div>
-				</div>  -->
-				<div class="pb-4 astro-MHUF2CIM">
-					<div class="font-bold text-lg astro-MHUF2CIM">Rating: 5/10 Toasters</div>
-					<div class="p-2 bg-lime-800/50 border border-neutral-500 inline-flex rounded space-x-1 astro-MHUF2CIM">
-						<img class="h-6 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-MHUF2CIM" src="/images/bread/toaster.png">
-						<img class="h-6 grayscale opacity-50 astro-MHUF2CIM" src="/images/bread/toaster.png">
-					</div>
+const $$file$9 = "/Users/donaldjewkes/site/src/pages/photos/vancouver.astro";
+const $$url$9 = "/photos/vancouver";
+
+const _page6 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$Vancouver,
+	file: $$file$9,
+	url: $$url$9
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const $$Astro$b = createAstro("/Users/donaldjewkes/site/src/pages/photos/sf.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Sf = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$b, $$props, $$slots);
+  Astro2.self = $$Sf;
+  Astro2.props;
+  import('./chunks/van1.27d0cea1.mjs');
+  return renderTemplate`${renderComponent($$result, "Base", $$Base, { "title": "Photos of San Fransisco and surrounding areas.", "description": "Photos from walks in SF by Donald Jewkes." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, { "id": "top" })}${maybeRenderHead($$result)}<div class="p-4">
+			<!-- build into component -->
+			${renderComponent($$result, "BackArrow", $$BackArrow, { "text": "photos", "link": "/photos" })}
+			<div class=" rounded">
+				<div class=" flex flex-col items-center justify-center space-y-4">
+					${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative w-full", "src": import('./chunks/sfp8.8fb405ce.mjs'), "alt": "A bright house in San Fransisco." })}
+					${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative w-full", "src": import('./chunks/sfp2.4c0afa01.mjs'), "alt": "A man talking to someone in a car." })}
+					${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative w-full", "src": import('./chunks/sfp3.f5155697.mjs'), "alt": "Someone walking quickly in San Fransisco." })}
+					${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative w-full", "src": import('./chunks/sfp4.46cc0938.mjs'), "alt": "An old man holding flowers by a cathedral." })}
+					${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative w-full", "src": import('./chunks/sfp6.baf06399.mjs'), "alt": "A man leaning against a building and thinking." })}
+					${renderComponent($$result, "Image", $$Image, { "width": 700, "class": "relative w-full", "src": import('./chunks/sfp9.e2bcc3c1.mjs'), "alt": "Roman architecture." })}
 				</div>
 			</div>
-			<div class="astro-MHUF2CIM">Despite eating this quickly, I was a little disappointed with this loaf.</div>
-			<div class=" astro-MHUF2CIM">The flavour was poorly dispersed. The olives were the only dominant pockets, rosemary was an afterthought. The crumb was very white and leaned dry. The crust had a satisfying crunch factor but was difficult to cut.
+			<a class="group flex flex-row justify-start items-center my-2" href="#top">
+				<div>
+					<img class="h-3 mr-2 -rotate-90" src="/images/icons/next.svg" alt="An up-arrow icon.">
+				</div>
+				<div class="flex flex-col items-start justify-start">
+					<div class=" text-zinc-600">top</div>
+					<div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300"></div>
+				</div>
+			</a>
+		</div>` })}`;
+});
+
+const $$file$8 = "/Users/donaldjewkes/site/src/pages/photos/sf.astro";
+const $$url$8 = "/photos/sf";
+
+const _page7 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$Sf,
+	file: $$file$8,
+	url: $$url$8
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const $$Astro$a = createAstro("/Users/donaldjewkes/site/src/components/PhotoDirectory.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$PhotoDirectory = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$a, $$props, $$slots);
+  Astro2.self = $$PhotoDirectory;
+  const { link, image, text, alt } = Astro2.props;
+  return renderTemplate`${maybeRenderHead($$result)}<a${addAttribute(link, "href")}>
+    <div class="py-1 flex flex-row items-center group">
+        <div class="flex flex-col items-center justify-center">
+            <div class="absolute bg-amber-400 group-hover:bg-secondary transition-all duration-300 rounded h-8 w-8"></div>
+            <!-- <img class="relative h-10 w-10" src={image} alt={alt}> -->
+            ${renderComponent($$result, "Image", $$Image, { "width": 75, "class": "rounded relative h-10 w-10 object-cover object-center", "src": image, "alt": "icon" })}
+        </div>
+        <div>
+            <img class="h-3 mx-2" src="/images/icons/next.svg" alt="An right-arrow icon.">
+        </div>
+        <div class="relative flex flex-col">
+            <div class="grup-hover:underline decoration-double decoration-secondary decoration-2 underline-offset-4 transition-all duration-300">
+                ${text}
+            </div>
+            <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300">
+            </div>
+        </div>
+        <!-- <div>
+            <img class="h-4" src="/images/icons/next.svg">
+        </div> -->
+    </div>
+</a>`;
+});
+
+const $$Astro$9 = createAstro("/Users/donaldjewkes/site/src/pages/photos.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Photos = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$9, $$props, $$slots);
+  Astro2.self = $$Photos;
+  import('./chunks/van1.27d0cea1.mjs');
+  Astro2.props;
+  return renderTemplate`<html lang="en">
+	${renderComponent($$result, "Base", $$Base, { "title": "Donald Jewkes - Photos", "description": "Photos provide the illusion of permenance. I like that about them." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, { "id": "top" })}${maybeRenderHead($$result)}<div class="p-4 max-w-md ">
+			${renderComponent($$result, "PhotoDirectory", $$PhotoDirectory, { "class": "relative py-10", "link": "/photos/vancouver", "image": import('./chunks/vanicon.c6192cde.mjs'), "text": "Vancouver", "alt": "Vancouver bear." })}
+			${renderComponent($$result, "PhotoDirectory", $$PhotoDirectory, { "class": "relative py-1", "link": "/photos/sf", "image": import('./chunks/sficon.65175630.mjs'), "text": "SF", "alt": "San Fransisco House." })}
+			<div class=""></div>
+
+		</div>` })}
+</html>`;
+});
+
+const $$file$7 = "/Users/donaldjewkes/site/src/pages/photos.astro";
+const $$url$7 = "/photos";
+
+const _page8 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$Photos,
+	file: $$file$7,
+	url: $$url$7
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const $$Astro$8 = createAstro("/Users/donaldjewkes/site/src/pages/thinks.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$Thinks = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$8, $$props, $$slots);
+  Astro2.self = $$Thinks;
+  Astro2.props;
+  return renderTemplate`<html lang="en">
+	${renderComponent($$result, "Base", $$Base, { "title": "Donald Jewkes - Thinks", "description": "What's going on in my brain." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${maybeRenderHead($$result)}<div class="p-4">
+			<div class="">Brain empty.</div>
+			<div class="font-light text-zinc-600 text-sm ">Check back tomorrow.</div>
+		</div>` })}
+</html>`;
+});
+
+const $$file$6 = "/Users/donaldjewkes/site/src/pages/thinks.astro";
+const $$url$6 = "/thinks";
+
+const _page9 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$Thinks,
+	file: $$file$6,
+	url: $$url$6
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const $$Astro$7 = createAstro("/Users/donaldjewkes/site/src/pages/about.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$About = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$7, $$props, $$slots);
+  Astro2.self = $$About;
+  Astro2.props;
+  return renderTemplate`<html lang="en">
+	${renderComponent($$result, "Base", $$Base, { "title": "Donald Jewkes - About", "description": "I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${maybeRenderHead($$result)}<div class="p-4 lg:py-6 max-w-2x text-zinc-800">
+			<div class="flex flex-row items-center ">
+				<img class="relative rounded h-24 w-24	" src="/images/icons/donaldicon.jpg">
+				<!-- <Image width={200} height={200} class="relative rounded h-16 w-16" src={import("/public/images/icons/dol_icosm.jpg")} alt="icon"></Image> -->
+				<!-- <div class="absolute mt-2 ml-1 -z-10 rounded h-16 w-16 bg-primary"></div> -->
+				<div class="pl-4">
+					<div class="font-bold ">Hey, I'm Donald.</div>
+					<div class="">I live in Vancouver, Canada.</div>
+				</div>
 			</div>
-			<div class=" astro-MHUF2CIM">
+			
+			<div class="pt-4 text-zinc-600 space-y-2">
+				<div>
+					<span>I'm a developer at </span>
+					${renderComponent($$result, "Link", $$Link, { "href": "http://www.motionhall.com", "text": "MotionHall", "nt": "1" })}.
+					<span>We are working to accelerate tech transfer in the life sciences. Recently I've been building infrastructure to track intellectual property across the pharmaceutical industry.</span>
+				</div>
+				<div class="">I've also been learning about biotech R&D, transactions, and regulatory pathways.</div>
+				<div>You can see some of the projects I've worked on in the past ${renderComponent($$result, "Link", $$Link, { "href": "/projects", "text": "here" })}. Sometimes I write about ${renderComponent($$result, "Link", $$Link, { "href": "/bread", "text": "bread" })} or shoot ${renderComponent($$result, "Link", $$Link, { "href": "/photos", "text": "photos" })}</div>
+			</div>
+			<div class="pt-6 text-neutral-800 font-bold " id="contact">Get in touch</div>
+			<div class="text-zinc-600">donaldjewkes [at] gmail [dot] com</div>
+		</div>` })}
+
+</html>`;
+});
+
+const $$file$5 = "/Users/donaldjewkes/site/src/pages/about.astro";
+const $$url$5 = "/about";
+
+const _page10 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$About,
+	file: $$file$5,
+	url: $$url$5
+}, Symbol.toStringTag, { value: 'Module' }));
+
+React.props;
+function Toasters(props) {
+  return /* @__PURE__ */ jsxs("div", {
+    class: "pt-2",
+    children: [/* @__PURE__ */ jsxs("div", {
+      class: " text-lg",
+      children: ["Rating: ", /* @__PURE__ */ jsxs("span", {
+        class: "font-bold",
+        children: [props.numToasters, "/10 Toasters"]
+      })]
+    }), /* @__PURE__ */ jsxs("div", {
+      class: "p-1.5 bg-primary inline-flex rounded space-x-1",
+      children: [[...Array(props.numToasters)].map((star) => {
+        return /* @__PURE__ */ jsx("div", {
+          children: /* @__PURE__ */ jsx("img", {
+            class: "h-6",
+            src: "/images/icons/btoaster.png"
+          })
+        });
+      }), [...Array(10 - props.numToasters)].map((star) => {
+        return /* @__PURE__ */ jsx("div", {
+          children: /* @__PURE__ */ jsx("img", {
+            class: "h-6 grayscale opacity-50",
+            src: "/images/icons/btoaster.png"
+          })
+        });
+      })]
+    })]
+  });
+}
+__astro_tag_component__(Toasters, "@astrojs/react");
+
+const $$Astro$6 = createAstro("/Users/donaldjewkes/site/src/components/BreadPage.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$BreadPage = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$6, $$props, $$slots);
+  Astro2.self = $$BreadPage;
+  const { bread, bakery, image, toasters, alt, bakeryLink } = Astro2.props;
+  return renderTemplate`${maybeRenderHead($$result)}<div class="p-6">
+    <h1 class="text-xl font-bold text-zinc-800">${bread}</h1>
+    <h2 class="font-light text-zinc-600"><span class="text-xs italic">from</span> <a class="underline"${addAttribute(bakeryLink, "href")}>${bakery}</a></h2>
+    <div class="py-4 space-y-2 flex flex-col">
+        ${renderSlot($$result, $$slots["pre-image"])}
+        <div class="py-6 relative flex flex-col items-center sm:items-start">
+            ${renderComponent($$result, "Image", $$Image, { "width": 500, "height": 500, "class": "w-80 object-cover object-center rounded", "src": image, "alt": alt })}
+            ${renderComponent($$result, "Toasters", Toasters, { "numToasters": toasters })}
+        </div>
+        ${renderSlot($$result, $$slots["post-image"])}
+
+    </div>
+</div>`;
+});
+
+const $$Astro$5 = createAstro("/Users/donaldjewkes/site/src/pages/bread/nelson-chocolate.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$NelsonChocolate = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$5, $$props, $$slots);
+  Astro2.self = $$NelsonChocolate;
+  return renderTemplate`${renderComponent($$result, "Base", $$Base, { "title": "Dark Chocolate Sourdough from Nelson the Seagull - Vancouver Bread Reviews", "description": "Dark Chocolate Sourdough bread review from Nelson the Seagull in Vancouver, Canada." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${renderComponent($$result, "BreadPage", $$BreadPage, { "bread": "Dark Chocolate Sourdough", "bakery": "Nelson the Seagull", "image": import('./chunks/nelson-chocolate2.31977f62.mjs'), "link": "https://www.nelsontheseagull.com/", "toasters": 7, "alt": "A dark chocolate sourdough." }, { "post-image": () => renderTemplate`${maybeRenderHead($$result)}<div class="space-y-2">
+			<div>This sourdough was particularly pretty. It was reminiscent of a dark rye but there were visible pockets of chocolate throughout.</div>
+			<div class="">There is a nutty bitterness that will appease dark chocolate enthusiasts. I found the chocolate gave the crumb a nice moisture. 
+			</div>
+			<div class="">
+				I enjoyed this bread most toasted with a light coating of warm peanut butter.
+			</div>
+		</div>`, "pre-image": () => renderTemplate`<div class="space-y-3">
+			<span>This loaf came recommended from a friend. I picked it up on a rainy Thursday morning before work.
+				The bread was still warm which made the walk home pleasant.
+			</span>
+			
+		</div>` })}` })}`;
+});
+
+const $$file$4 = "/Users/donaldjewkes/site/src/pages/bread/nelson-chocolate.astro";
+const $$url$4 = "/bread/nelson-chocolate";
+
+const _page11 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$NelsonChocolate,
+	file: $$file$4,
+	url: $$url$4
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const $$Astro$4 = createAstro("/Users/donaldjewkes/site/src/pages/bread/purebread-olive.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$PurebreadOlive = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$4, $$props, $$slots);
+  Astro2.self = $$PurebreadOlive;
+  return renderTemplate`${renderComponent($$result, "Base", $$Base, { "title": "Rosemary Olive - Vancouver Bread Reviews", "description": "Rosemary Olive bread review from Purebread in Vancouver, Canada." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${maybeRenderHead($$result)}<div class="p-4 max-w-xl">
+		<h1 class="text-xl font-bold">Rosemary Olive</h1>
+		<h2 class="font-light text-zinc-600"><span class="text-xs italic">from</span> <a class="underline" href="https://www.purebread.ca/">Purebread</a></h2>
+		<div class="py-4 space-y-2 flex flex-col">
+			<span>I got this loaf of Rosemary Olive from Purebread last Saturday. This is what's left of it after a day and a half:</span>			
+			<div class="py-2 relative flex flex-col items-center sm:items-start">
+				<img class="w-80 h-80 object-cover rounded" src="/images/bread/purebread-ro.jpg">
+				${renderComponent($$result, "Toasters", Toasters, { "numToasters": 5 })}
+
+			</div>
+			<div>Despite eating this quickly, I was a little disappointed with this loaf.</div>
+			<div class="">The flavour was poorly dispersed. The olives were the only dominant pockets, rosemary was an afterthought. The crumb was very white and leaned dry. The crust had a satisfying crunch factor but was difficult to cut.
+			</div>
+			<div class="">
 				I enjoyed this bread most lightly toasted with generous butter.
 			</div>
 
-			<div class="astro-MHUF2CIM">It's clear the staff at Purebread enjoy being there. Plus one toaster for the excellent service.</div>
-			<div class="inline-flex astro-MHUF2CIM">
-				<div class="font-bold pr-1 astro-MHUF2CIM">Bonus Toaster +1</div>
-				<img class="h-6 astro-MHUF2CIM" src="/images/bread/toaster.png">
+			<div>It's clear the staff at Purebread enjoy being there. Plus one toaster for the excellent service.</div>
+			<div class="inline-flex">
+				<div class="font-bold pr-1">Bonus Toaster +1</div>
+				<img class="h-6" src="/images/icons/btoaster.png">
 
 			</div>
 		</div>
-	</div>
-</html>`;
+	</div>` })}`;
 });
 
-const $$file$1 = "/home/dol/donald/site/src/pages/bread/purebread.astro";
-const $$url$1 = "/bread/purebread";
+const $$file$3 = "/Users/donaldjewkes/site/src/pages/bread/purebread-olive.astro";
+const $$url$3 = "/bread/purebread-olive";
 
-const _page6 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$Purebread,
-  file: $$file$1,
-  url: $$url$1
+const _page12 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$PurebreadOlive,
+	file: $$file$3,
+	url: $$url$3
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const $$Astro = createAstro("/home/dol/donald/site/src/pages/bread.astro", "https://www.donaldjewkes.com/", "file:///home/dol/donald/site/");
+const $$Astro$3 = createAstro("/Users/donaldjewkes/site/src/pages/bread/fife-cinnamon.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$FifeCinnamon = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$3, $$props, $$slots);
+  Astro2.self = $$FifeCinnamon;
+  return renderTemplate`${renderComponent($$result, "Base", $$Base, { "title": "Cinnamon Raisin from Fife - Vancouver Bread Reviews", "description": "Cinnamon Raisin bread review from Fife in Vancouver, Canada." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${renderComponent($$result, "BreadPage", $$BreadPage, { "bread": "Cinnamon Raisin", "bakery": "Fife Bakery", "image": import('./chunks/fife-frenchtoast.d44a8728.mjs'), "toasters": 8, "alt": "A dark chocolate sourdough.", "link": "https://fifebakery.square.site/" }, { "post-image": () => renderTemplate`${maybeRenderHead($$result)}<div class="space-y-3">
+			<div>I tore off some chunks of this on the walk home. The crumb was warm, doughy and delicious. I made french toast with it the next morning. This was definitely denser than French toast that you would make with a brioche, but I found the raisins made up for it.
+			</div>
+			<div>
+				I will be going back to Fife. I'm sure their line will be shorter on a weekday morning.
+			</div>
+		</div>`, "pre-image": () => renderTemplate`<div class="space-y-3">
+			<div>I went to Fife twice before actually getting in. Notably, Fife is a bakery that doesn't open before 9am. After trying their bread I realized <i>they don't need</i> to open before 9am.</div>			
+			<div>This mid November saturday morning the low fall light fell through my blinds. I owed it to myself to experience this pocket of sun as it was preceeded by a week of Vancouver gray.</div>
+			<div>I saw multiple bright puffers tucked under arms as I made my way towards Mount Pleasant. I delayered as well. Today was reminiscent of late september warmth.</div>
+			<div>There was a line outside of Fife when I landed around 9:30am. After a short wait I made my way into the cozy interior. 
+				Regulars occupied the limited seating areas and chatted with the barista. When I inquired, she recommended that I try the cinnamon raisin loaf, one of their seasonal offerings.</div>
+		</div>` })}` })}`;
+});
+
+const $$file$2 = "/Users/donaldjewkes/site/src/pages/bread/fife-cinnamon.astro";
+const $$url$2 = "/bread/fife-cinnamon";
+
+const _page13 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$FifeCinnamon,
+	file: $$file$2,
+	url: $$url$2
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const $$Astro$2 = createAstro("/Users/donaldjewkes/site/src/components/BreadLink.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$BreadLink = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro$2, $$props, $$slots);
+  Astro2.self = $$BreadLink;
+  const { link, image, alt, breadName, bakery } = Astro2.props;
+  return renderTemplate`${maybeRenderHead($$result)}<a class="group"${addAttribute(link, "href")}>
+    <div class="inline-flex flex-row ">
+        <div class="inline-flex flex-row items-center p-3">
+            <img class="ring-1 rounded-sm ring-lime-400 group-hover:ring-amber-400 transition-all duration-300 ring-offset-2 ring-offset-neutral-100 w-12 h-12 object-cover"${addAttribute(image, "src")}${addAttribute(breadName, "alt")}>
+            <div class="px-4 text-zinc-800 flex flex-col">
+                <div class="font-bold text-zinc-800">${breadName}</div> 
+                <div class="font-light text-zinc-600 text-sm"><span class="text-xs italic">from </span>${bakery}</div>
+            </div>
+        </div>
+    </div>
+</a>`;
+});
+
+const $$Astro$1 = createAstro("/Users/donaldjewkes/site/src/pages/bread.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
 const $$Bread = createComponent(async ($$result, $$props, $$slots) => {
-  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
+  const Astro2 = $$result.createAstro($$Astro$1, $$props, $$slots);
   Astro2.self = $$Bread;
-  return renderTemplate`<html lang="en" class="astro-VGH5HXNE">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<meta name="description" content="Donald Jewkes's bread reviews in Vancouver, Canada. Trying to find the best bakeries in Vancouver.">
-		<title>Donald Jewkes</title>
-	${renderHead($$result)}</head>
-	
-	${renderComponent($$result, "DirHeader", $$DirHeader, { "class": "astro-VGH5HXNE" })}
+  return renderTemplate`<html lang="en">
+	${renderComponent($$result, "Base", $$Base, { "title": "Donald Jewkes - Vancouver Bread Reviews", "description": "Trying to find the best bread in Vancouver." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${maybeRenderHead($$result)}<div class="p-4">
+			<h1 class="text-xl text-zinc-800 font-bold">Vancouver Bread Reviews</h1>
+			<h2 class="text-zinc-600">
+				I try bread and tell you what I think.
+			</h2>
+			<div class="py-4 grid grid-cols-1 ">
+				<div>
+					${renderComponent($$result, "BreadLink", $$BreadLink, { "link": "/bread/purebread-olive", "image": "/images/bread/purebread-ro-icon.jpg", "breadName": "Rosemary Olive", "bakery": "Purebread" })}
+				</div>
+				<div class="ml-2 w-40 border-t border-1 border-lime-800/50 my-2"></div>
+				<div>
+					${renderComponent($$result, "BreadLink", $$BreadLink, { "link": "/bread/nelson-chocolate", "image": "/images/bread/nelson-icon.jpg", "breadName": "Dark Chocolate Sourdough", "bakery": "Nelson the Seagull" })}
+				</div>
+				<div class="ml-2 w-40 border-t border-1 border-lime-800/50 my-2"></div>
+				<div>
+					${renderComponent($$result, "BreadLink", $$BreadLink, { "link": "/bread/fife-cinnamon", "image": "/images/bread/fife-ft-icon.jpg", "breadName": "Cinnamon Raisin", "bakery": "Fife" })}
+				</div>
+				
+			</div>
+			
+			<div class="">
+				<div class="font-bold text-lg text-zinc-800 ">Future Reviews:</div>
+				<div class="pt-2 text-neutral-600">
+					<ul class="ml-4 list-disc">
+						<li class="line-through">Dark Chocolate Sourdough from Nelson the Seagull</li>
+						<li>Terra Breads</li>
+						<li>Birds and the Beets</li>
+						<li>Bâtard Bakery</li>
+						<li>Fratlli's</li>
+						<li>Cob's</li>
+						<li>Safeway $1.99 loaf</li>
+					</ul>
+				</div>
+			</div>
 
-	<div class="p-4 astro-VGH5HXNE">
-		<h1 class="text-xl font-bold astro-VGH5HXNE">Vancouver Bread Reviews</h1>
-		<h2 class="text-neutral-500 astro-VGH5HXNE">
-			I try bread and tell you what I think.
-		</h2>
-		<div class="py-8 grid grid-cols-1  astro-VGH5HXNE">
-			<div class="astro-VGH5HXNE">
-				<a href="/bread/purebread" class="astro-VGH5HXNE">
-					<div class="hover:translate-x-1 transition-all astro-VGH5HXNE">
-						<div class="inline-flex flex-row  astro-VGH5HXNE">
-							<div class="inline-flex flex-row items-center p-3 astro-VGH5HXNE">
-								<img class="ring-1 ring-lime-800 ring-offset-2 ring-offset-neutral-100 w-12 h-12 object-cover astro-VGH5HXNE" src="/images/bread/purebread-ro-icon.jpg" alt="purebread icon">
-								<div class="px-4 text-neutral-700 flex flex-col astro-VGH5HXNE">
-									<div class="font-bold text-neutral-800 text-lg astro-VGH5HXNE">Rosemary Olive</div> 
-									<div class="font-light text-neutral-500 astro-VGH5HXNE"><span class="text-xs italic astro-VGH5HXNE">from</span> Purebread</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</a>
-			</div>
-			<div class="ml-2 w-40 border-t border-1 border-lime-800/50 my-4 astro-VGH5HXNE"></div>
-			<div class="pt- astro-VGH5HXNE">
-				<a class=" astro-VGH5HXNE" href="/bread/nelson-chocolate">
-					<div class="hover:translate-x-1 transition-all astro-VGH5HXNE">
-						<div class="inline-flex flex-row  astro-VGH5HXNE">
-							<div class="inline-flex flex-row items-center p-3 astro-VGH5HXNE">
-								<img class="ring-1 ring-lime-800 ring-offset-2 ring-offset-neutral-100 w-12 h-12 object-cover astro-VGH5HXNE" src="/images/bread/nelson-icon.jpg" alt="nelson the seagull icon">
-								<div class="px-4  flex flex-col astro-VGH5HXNE">
-									<div class="font-bold text-neutral-800 text-lg astro-VGH5HXNE">Dark Chocolate Sourdough</div> 
-									<div class="font-light text-neutral-500 astro-VGH5HXNE"><span class="text-xs italic astro-VGH5HXNE">from</span> Nelson the Seagull</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</a>
-			</div>
-		</div>
-		
-		<div class=" astro-VGH5HXNE">
-			<div class="font-bold text-lg text-neutral-800  astro-VGH5HXNE">Future Reviews:</div>
-			<div class="pt-2 text-neutral-500 astro-VGH5HXNE">
-				<ul class="ml-4 list-disc astro-VGH5HXNE">
-					<li class="line-through astro-VGH5HXNE">Dark Chocolate Sourdough from Nelson the Seagull</li>
-					<li class="astro-VGH5HXNE">Terra Breads</li>
-					<li class="astro-VGH5HXNE">Birds and the Beets</li>
-					<li class="astro-VGH5HXNE">Bâtard Bakery</li>
-					<li class="astro-VGH5HXNE">Fratlli's</li>
-					<li class="astro-VGH5HXNE">Cob's</li>
-					<li class="astro-VGH5HXNE">Safeway $1.99 loaf</li>
-				</ul>
-			</div>
-		</div>
-
-	</div>
+		</div>` })}
 </html>`;
 });
 
-const $$file = "/home/dol/donald/site/src/pages/bread.astro";
-const $$url = "/bread";
+const $$file$1 = "/Users/donaldjewkes/site/src/pages/bread.astro";
+const $$url$1 = "/bread";
 
-const _page7 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
-  __proto__: null,
-  default: $$Bread,
-  file: $$file,
-  url: $$url
+const _page14 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$Bread,
+	file: $$file$1,
+	url: $$url$1
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const pageMap = new Map([['node_modules/@astrojs/image/dist/endpoint.js', _page0],['src/pages/index.astro', _page1],['src/pages/photos.astro', _page2],['src/pages/thinks.astro', _page3],['src/pages/about.astro', _page4],['src/pages/bread/nelson-chocolate.astro', _page5],['src/pages/bread/purebread.astro', _page6],['src/pages/bread.astro', _page7],]);
-const renderers = [Object.assign({"name":"astro:jsx","serverEntrypoint":"astro/jsx/server.js","jsxImportSource":"astro"}, { ssr: server_default }),];
+const $$Astro = createAstro("/Users/donaldjewkes/site/src/pages/404.astro", "https://www.donaldjewkes.com/", "file:///Users/donaldjewkes/site/");
+const $$404 = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
+  Astro2.self = $$404;
+  Astro2.props;
+  return renderTemplate`<html lang="en">
+	${renderComponent($$result, "Base", $$Base, { "title": "Donald Jewkes - About", "description": "I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences." }, { "default": () => renderTemplate`${renderComponent($$result, "DirHeader", $$DirHeader, {})}${maybeRenderHead($$result)}<div class="p-4 lg:py-6 max-w-2x text-zinc-800">
+			<div class="flex flex-col items-start ">
+				<div class="text-lg font-bold pb-4">Hey, welcome to the loft.</div>
+				${renderComponent($$result, "Image", $$Image, { "width": 600, "class": "relative rounded w-full h-52 sm:h-96 object-cover", "src": import('./chunks/loft2.7e82ffd9.mjs'), "alt": "icon" })}
+				<!-- <div class="absolute mt-2 ml-1 -z-10 rounded h-16 w-16 bg-primary"></div> -->
+				
+			</div>
+			
+			<div class="pt-4 text-zinc-600 space-y-2">
+					<div>Make yourself at home.</div>
+					<div>I'll put the kettle on for tea.</div>
+					<div>Feel free to grab something to read while you wait:</div>
+					<ul class="py-2 pl-10 list-[disc] space-y-2">
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://www.schneier.com/blog/archives/2013/11/surveillance_as_1.html", "text": "Surveillance as a Business Model", "nt": "t" })}</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://danluu.com/cocktail-ideas/", "text": "Cocktail Party Ideas", "nt": "t" })}</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://www.celinehh.com/regulatory", "text": "Basics of Regulatory Affairs", "nt": "t" })}</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://devonzuegel.com/post/we-should-be-building-cities-for-people-not-cars", "text": "We Should Be Building Cities for People, Not Cars", "nt": "t" })}</li>
+						<li>${renderComponent($$result, "Link", $$Link, { "href": "https://guzey.com/how-life-sciences-actually-work/", "text": "How Life Sciences Actually Work", "nt": "t" })}</li>
+					</ul>
+					<div class="pt-3">Here are some records, if you'd like to throw one on:</div>
+					<div class="py-3 flex flex-row w-full justify-around max-w-sm">
+						<iframe class="hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/4h5av08hHhOyyINApKfnEE?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+						<iframe class=" hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/07KJ48Y7pbXvz3Q4H44GZl?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+						<!-- <div class=""><iframe class="hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/2BRedpXNmL3NkN2eutmXZ2?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
+						<iframe class=" hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/6H9lWC3gxOefkRfDrxmlaB?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe> -->
+						<iframe class="hover:animate-spin ease-in-out opacity-75 transition-all" style="border-radius:100px" src="https://open.spotify.com/embed/album/07bQPrG1jSRCkd9SvBXsy4?utm_source=generator" width="80" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+					</div>
+					<div class="py-3">Just let me know when you want to ${renderComponent($$result, "Link", $$Link, { "href": "/", "text": "head out", "nt": "t" })}.</div>
+			</div>
+		</div>` })}
+
+</html>`;
+});
+
+const $$file = "/Users/donaldjewkes/site/src/pages/404.astro";
+const $$url = "/404";
+
+const _page15 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+	__proto__: null,
+	default: $$404,
+	file: $$file,
+	url: $$url
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const pageMap = new Map([['node_modules/@astrojs/image/dist/endpoint.js', _page0],['src/pages/index.astro', _page1],['src/pages/makesomethingsaturday.astro', _page2],['src/pages/projects/liven.astro', _page3],['src/pages/projects/wtwm.astro', _page4],['src/pages/projects.astro', _page5],['src/pages/photos/vancouver.astro', _page6],['src/pages/photos/sf.astro', _page7],['src/pages/photos.astro', _page8],['src/pages/thinks.astro', _page9],['src/pages/about.astro', _page10],['src/pages/bread/nelson-chocolate.astro', _page11],['src/pages/bread/purebread-olive.astro', _page12],['src/pages/bread/fife-cinnamon.astro', _page13],['src/pages/bread.astro', _page14],['src/pages/404.astro', _page15],]);
+const renderers = [Object.assign({"name":"astro:jsx","serverEntrypoint":"astro/jsx/server.js","jsxImportSource":"astro"}, { ssr: server_default }),Object.assign({"name":"@astrojs/react","clientEntrypoint":"@astrojs/react/client.js","serverEntrypoint":"@astrojs/react/server.js","jsxImportSource":"react"}, { ssr: _renderer1 }),];
 
 if (typeof process !== "undefined") {
   if (process.argv.includes("--verbose")) ; else if (process.argv.includes("--silent")) ; else ;
@@ -2562,7 +3246,7 @@ function deserializeManifest(serializedManifest) {
   };
 }
 
-const _manifest = Object.assign(deserializeManifest({"adapterName":"@astrojs/netlify/functions","routes":[{"file":"","links":[],"scripts":[],"routeData":{"type":"endpoint","route":"/_image","pattern":"^\\/_image$","segments":[[{"content":"_image","dynamic":false,"spread":false}]],"params":[],"component":"node_modules/@astrojs/image/dist/endpoint.js","pathname":"/_image","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/about.054f63d3.css","assets/index.abdaab84.css"],"scripts":[],"routeData":{"route":"/","type":"page","pattern":"^\\/$","segments":[],"params":[],"component":"src/pages/index.astro","pathname":"/","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/about.054f63d3.css","assets/photos.abdaab84.css"],"scripts":[],"routeData":{"route":"/photos","type":"page","pattern":"^\\/photos\\/?$","segments":[[{"content":"photos","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/photos.astro","pathname":"/photos","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/about.054f63d3.css","assets/thinks.abdaab84.css"],"scripts":[],"routeData":{"route":"/thinks","type":"page","pattern":"^\\/thinks\\/?$","segments":[[{"content":"thinks","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/thinks.astro","pathname":"/thinks","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/about.054f63d3.css","assets/about.abdaab84.css"],"scripts":[],"routeData":{"route":"/about","type":"page","pattern":"^\\/about\\/?$","segments":[[{"content":"about","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/about.astro","pathname":"/about","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/about.054f63d3.css","assets/nelson-chocolate.abdaab84.css"],"scripts":[],"routeData":{"route":"/bread/nelson-chocolate","type":"page","pattern":"^\\/bread\\/nelson-chocolate\\/?$","segments":[[{"content":"bread","dynamic":false,"spread":false}],[{"content":"nelson-chocolate","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/bread/nelson-chocolate.astro","pathname":"/bread/nelson-chocolate","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/about.054f63d3.css","assets/purebread.abdaab84.css"],"scripts":[],"routeData":{"route":"/bread/purebread","type":"page","pattern":"^\\/bread\\/purebread\\/?$","segments":[[{"content":"bread","dynamic":false,"spread":false}],[{"content":"purebread","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/bread/purebread.astro","pathname":"/bread/purebread","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/about.054f63d3.css","assets/bread.abdaab84.css"],"scripts":[],"routeData":{"route":"/bread","type":"page","pattern":"^\\/bread\\/?$","segments":[[{"content":"bread","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/bread.astro","pathname":"/bread","_meta":{"trailingSlash":"ignore"}}}],"site":"https://www.donaldjewkes.com/","base":"/","markdown":{"drafts":false,"syntaxHighlight":"shiki","shikiConfig":{"langs":[],"theme":"github-dark","wrap":false},"remarkPlugins":[],"rehypePlugins":[],"remarkRehype":{},"extendDefaultPlugins":false,"isAstroFlavoredMd":false},"pageMap":null,"renderers":[],"entryModules":{"\u0000@astrojs-ssr-virtual-entry":"entry.mjs","/home/dol/donald/site/public/images/vancouver/van1.jpg":"chunks/van1.0e0b841d.mjs","/home/dol/donald/site/src/assets/tester.jpg":"chunks/tester.3387326f.mjs","/home/dol/donald/site/public/images/vancouver/van3.jpg":"chunks/van3.120f93d7.mjs","/home/dol/donald/site/public/images/vancouver/van4.jpg":"chunks/van4.e6a259e4.mjs","astro:scripts/before-hydration.js":""},"assets":["/assets/tester.db0df9d0.jpg","/assets/van1.679ce103.jpg","/assets/van3.742ef038.jpg","/assets/van4.48d9d1d1.jpg","/assets/about.054f63d3.css","/assets/about.abdaab84.css","/assets/bread.abdaab84.css","/assets/index.abdaab84.css","/assets/nelson-chocolate.abdaab84.css","/assets/photos.abdaab84.css","/assets/purebread.abdaab84.css","/assets/thinks.abdaab84.css","/favicon.ico","/favicon[old].ico","/images/headericon.png","/images/bread/nelson-chocolate1.jpg","/images/bread/nelson-chocolate2.jpg","/images/bread/nelson-icon.jpg","/images/bread/neoclassicalbread.jpg","/images/bread/purebread-ro-icon.jpg","/images/bread/purebread-ro.jpg","/images/bread/toaster.png","/images/icons/bread-lg.png","/images/icons/bread.png","/images/icons/camera-lg.png","/images/icons/camera.png","/images/icons/camera[old].png","/images/icons/dol-lg.png","/images/icons/dol.png","/images/icons/dolyellow.png","/images/icons/next.svg","/images/icons/thinking-lg.png","/images/icons/thinking.png","/images/icons/thinking[old].png","/images/icons/wave-lg.png","/images/icons/wave.png","/images/vancouver/van1.jpg","/images/vancouver/van2.jpg","/images/vancouver/van3.jpg","/images/vancouver/van4.jpg"]}), {
+const _manifest = Object.assign(deserializeManifest({"adapterName":"@astrojs/netlify/functions","routes":[{"file":"","links":[],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"type":"endpoint","route":"/_image","pattern":"^\\/_image$","segments":[[{"content":"_image","dynamic":false,"spread":false}]],"params":[],"component":"node_modules/@astrojs/image/dist/endpoint.js","pathname":"/_image","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/","type":"page","pattern":"^\\/$","segments":[],"params":[],"component":"src/pages/index.astro","pathname":"/","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/makesomethingsaturday","type":"page","pattern":"^\\/makesomethingsaturday\\/?$","segments":[[{"content":"makesomethingsaturday","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/makesomethingsaturday.astro","pathname":"/makesomethingsaturday","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/projects/liven","type":"page","pattern":"^\\/projects\\/liven\\/?$","segments":[[{"content":"projects","dynamic":false,"spread":false}],[{"content":"liven","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/projects/liven.astro","pathname":"/projects/liven","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/projects/wtwm","type":"page","pattern":"^\\/projects\\/wtwm\\/?$","segments":[[{"content":"projects","dynamic":false,"spread":false}],[{"content":"wtwm","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/projects/wtwm.astro","pathname":"/projects/wtwm","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/projects","type":"page","pattern":"^\\/projects\\/?$","segments":[[{"content":"projects","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/projects.astro","pathname":"/projects","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/photos/vancouver","type":"page","pattern":"^\\/photos\\/vancouver\\/?$","segments":[[{"content":"photos","dynamic":false,"spread":false}],[{"content":"vancouver","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/photos/vancouver.astro","pathname":"/photos/vancouver","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/photos/sf","type":"page","pattern":"^\\/photos\\/sf\\/?$","segments":[[{"content":"photos","dynamic":false,"spread":false}],[{"content":"sf","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/photos/sf.astro","pathname":"/photos/sf","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/photos","type":"page","pattern":"^\\/photos\\/?$","segments":[[{"content":"photos","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/photos.astro","pathname":"/photos","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/thinks","type":"page","pattern":"^\\/thinks\\/?$","segments":[[{"content":"thinks","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/thinks.astro","pathname":"/thinks","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/about","type":"page","pattern":"^\\/about\\/?$","segments":[[{"content":"about","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/about.astro","pathname":"/about","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/bread/nelson-chocolate","type":"page","pattern":"^\\/bread\\/nelson-chocolate\\/?$","segments":[[{"content":"bread","dynamic":false,"spread":false}],[{"content":"nelson-chocolate","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/bread/nelson-chocolate.astro","pathname":"/bread/nelson-chocolate","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/bread/purebread-olive","type":"page","pattern":"^\\/bread\\/purebread-olive\\/?$","segments":[[{"content":"bread","dynamic":false,"spread":false}],[{"content":"purebread-olive","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/bread/purebread-olive.astro","pathname":"/bread/purebread-olive","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/bread/fife-cinnamon","type":"page","pattern":"^\\/bread\\/fife-cinnamon\\/?$","segments":[[{"content":"bread","dynamic":false,"spread":false}],[{"content":"fife-cinnamon","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/bread/fife-cinnamon.astro","pathname":"/bread/fife-cinnamon","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/bread","type":"page","pattern":"^\\/bread\\/?$","segments":[[{"content":"bread","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/bread.astro","pathname":"/bread","_meta":{"trailingSlash":"ignore"}}},{"file":"","links":["assets/404.cafd7983.css"],"scripts":[{"stage":"head-inline","children":"!(function(w,p,f,c){c=w[p]=Object.assign(w[p]||{},{\"lib\":\"/~partytown/\",\"debug\":false});c[f]=(c[f]||[]).concat([\"dataLayer.push\"])})(window,'partytown','forward');/* Partytown 0.7.2 - MIT builder.io */\n!function(t,e,n,i,r,o,a,d,s,c,p,l){function u(){l||(l=1,\"/\"==(a=(o.lib||\"/~partytown/\")+(o.debug?\"debug/\":\"\"))[0]&&(s=e.querySelectorAll('script[type=\"text/partytown\"]'),i!=t?i.dispatchEvent(new CustomEvent(\"pt1\",{detail:t})):(d=setTimeout(w,1e4),e.addEventListener(\"pt0\",f),r?h(1):n.serviceWorker?n.serviceWorker.register(a+(o.swPath||\"partytown-sw.js\"),{scope:a}).then((function(t){t.active?h():t.installing&&t.installing.addEventListener(\"statechange\",(function(t){\"activated\"==t.target.state&&h()}))}),console.error):w())))}function h(t){c=e.createElement(t?\"script\":\"iframe\"),t||(c.setAttribute(\"style\",\"display:block;width:0;height:0;border:0;visibility:hidden\"),c.setAttribute(\"aria-hidden\",!0)),c.src=a+\"partytown-\"+(t?\"atomics.js?v=0.7.2\":\"sandbox-sw.html?\"+Date.now()),e.body.appendChild(c)}function w(t,n){for(f(),t=0;t<s.length;t++)(n=e.createElement(\"script\")).innerHTML=s[t].innerHTML,e.head.appendChild(n);c&&c.parentNode.removeChild(c)}function f(){clearTimeout(d)}o=t.partytown||{},i==t&&(o.forward||[]).map((function(e){p=t,e.split(\".\").map((function(e,n,i){p=p[i[n]]=n+1<i.length?\"push\"==i[n+1]?[]:p[i[n]]||{}:function(){(t._ptf=t._ptf||[]).push(i,arguments)}}))})),\"complete\"==e.readyState?u():(t.addEventListener(\"DOMContentLoaded\",u),t.addEventListener(\"load\",u))}(window,document,navigator,top,window.crossOriginIsolated);"}],"routeData":{"route":"/404","type":"page","pattern":"^\\/404\\/?$","segments":[[{"content":"404","dynamic":false,"spread":false}]],"params":[],"component":"src/pages/404.astro","pathname":"/404","_meta":{"trailingSlash":"ignore"}}}],"site":"https://www.donaldjewkes.com/","base":"/","markdown":{"drafts":false,"syntaxHighlight":"shiki","shikiConfig":{"langs":[],"theme":"github-dark","wrap":false},"remarkPlugins":[],"rehypePlugins":[],"remarkRehype":{},"extendDefaultPlugins":false,"isAstroFlavoredMd":false},"pageMap":null,"renderers":[],"entryModules":{"\u0000@astrojs-ssr-virtual-entry":"entry.mjs","/Users/donaldjewkes/site/public/images/pages/church.jpg":"chunks/church.cb9d8179.mjs","/Users/donaldjewkes/site/public/images/vancouver/van1.jpg":"chunks/van1.27d0cea1.mjs","/Users/donaldjewkes/site/public/images/vancouver/van4.jpg":"chunks/van4.e6a259e4.mjs","/Users/donaldjewkes/site/public/images/vancouver/van3.jpg":"chunks/van3.5e7c8c98.mjs","/Users/donaldjewkes/site/public/images/vancouver/van2.jpg":"chunks/van2.616916f5.mjs","/Users/donaldjewkes/site/public/images/sf/sfp8.jpg":"chunks/sfp8.8fb405ce.mjs","/Users/donaldjewkes/site/public/images/sf/sfp2.jpg":"chunks/sfp2.4c0afa01.mjs","/Users/donaldjewkes/site/public/images/sf/sfp3.jpg":"chunks/sfp3.f5155697.mjs","/Users/donaldjewkes/site/public/images/sf/sfp4.jpg":"chunks/sfp4.46cc0938.mjs","/Users/donaldjewkes/site/public/images/sf/sfp6.jpg":"chunks/sfp6.baf06399.mjs","/Users/donaldjewkes/site/public/images/sf/sfp9.jpg":"chunks/sfp9.e2bcc3c1.mjs","/Users/donaldjewkes/site/public/images/vancouver/vanicon.jpg":"chunks/vanicon.c6192cde.mjs","/Users/donaldjewkes/site/public/images/sf/sficon.jpg":"chunks/sficon.65175630.mjs","/Users/donaldjewkes/site/public/images/bread/nelson-chocolate2.jpg":"chunks/nelson-chocolate2.31977f62.mjs","/Users/donaldjewkes/site/public/images/bread/fife-frenchtoast.jpg":"chunks/fife-frenchtoast.d44a8728.mjs","/Users/donaldjewkes/site/public/images/pages/loft2.png":"chunks/loft2.7e82ffd9.mjs","@astrojs/react/client.js":"client.bf4f0f8e.js","astro:scripts/before-hydration.js":""},"assets":["/assets/fife-frenchtoast.11c5e205.jpg","/assets/vanicon.57f97265.jpg","/assets/sficon.a0de6801.jpg","/assets/nelson-chocolate2.345a1696.jpg","/assets/van2.7b26182c.jpg","/assets/van4.48d9d1d1.jpg","/assets/van1.c38430cd.jpg","/assets/sfp2.ad420bd3.jpg","/assets/sfp6.4ae588a3.jpg","/assets/sfp3.887e5139.jpg","/assets/loft2.56936b10.png","/assets/sfp4.ac484455.jpg","/assets/van3.baa7f6e4.jpg","/assets/church.aa6fa51d.jpg","/assets/sfp9.b60a5b83.jpg","/assets/sfp8.d77f593e.jpg","/assets/404.cafd7983.css","/client.bf4f0f8e.js","/favicon.ico","/favicon[old].ico","/images/headericon.png","/images/bread/fife-frenchtoast.jpg","/images/bread/fife-ft-icon.jpg","/images/bread/nelson-chocolate1.jpg","/images/bread/nelson-chocolate2.jpg","/images/bread/nelson-icon.jpg","/images/bread/neoclassicalbread.jpg","/images/bread/purebread-ro-icon.jpg","/images/bread/purebread-ro.jpg","/images/bread/toaster.png","/images/icons/WTWM_LOGO.svg","/images/icons/bread-lg.png","/images/icons/bread.png","/images/icons/btoaster.png","/images/icons/camera-lg.png","/images/icons/camera.png","/images/icons/camera[old].png","/images/icons/chisel.png","/images/icons/dico.jpg","/images/icons/dol-lg.png","/images/icons/dol.png","/images/icons/dol_cropped.jpg","/images/icons/dol_ico.jpg","/images/icons/dol_icosm.jpg","/images/icons/dolyellow.png","/images/icons/donaldicon.jpg","/images/icons/fulltoast.png","/images/icons/gtoaster.png","/images/icons/livenlogo.png","/images/icons/neuronicon.png","/images/icons/next.svg","/images/icons/onenfb.svg","/images/icons/stfx.png","/images/icons/thinking-lg.png","/images/icons/thinking.png","/images/icons/thinking[old].png","/images/icons/toaster.png","/images/icons/wave-lg.png","/images/icons/wave.png","/images/misc/orbitallounge.webp","/images/misc/wifi.png","/images/pages/church.jpg","/images/pages/hero.jpg","/images/pages/hero2.jpg","/images/pages/loft.jpg","/images/pages/loft2.png","/images/pages/searanch.jpg","/images/pages/searanch2.jpg","/images/pages/spark.jpg","/images/pages/wtwmposter.png","/images/sf/DSCF4326.jpg","/images/sf/sficon.jpg","/images/sf/sfl1.jpg","/images/sf/sfp1.jpg","/images/sf/sfp2.jpg","/images/sf/sfp3.jpg","/images/sf/sfp4.jpg","/images/sf/sfp5.jpg","/images/sf/sfp6.jpg","/images/sf/sfp7.jpg","/images/sf/sfp8.jpg","/images/sf/sfp9.jpg","/images/vancouver/van1.jpg","/images/vancouver/van2.jpg","/images/vancouver/van3.jpg","/images/vancouver/van4.jpg","/images/vancouver/vanicon.jpg","/~partytown/partytown-atomics.js","/~partytown/partytown-media.js","/~partytown/partytown-sw.js","/~partytown/partytown.js"]}), {
 	pageMap: pageMap,
 	renderers: renderers
 });
