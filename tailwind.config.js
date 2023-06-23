@@ -9,8 +9,8 @@ module.exports = {
       extend: {
         fontFamily: {
           'sans': ['Noto Serif JP', 'serif'],
-          'sans-serif': ['"Noto Sans Mono"', 'monospace'],
-          'mono': ['"Noto Sans Mono"', 'monospace'],
+          'sans-serif': ['Inter', 'sans-serif'],
+          'mono': ['IBM Plex Mono', 'monospace'],
         },
         colors: {
           primary: '#F5C089',
