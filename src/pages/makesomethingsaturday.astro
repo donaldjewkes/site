@@ -1,0 +1,86 @@
+---
+import Base from "../components/Base.astro";
+const {link, image, text} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+import DirHeader from "../components/DirHeader.astro";
+---
+<html lang="en">
+	<Base title="Make something Saturday" 
+		description="What's going on in my brain.">
+		<div class="p-4">
+			<div class="flex flex-col items-start justify-center space-y-2">
+				<div class="flex flex-row justify-between items-center w-full">
+					<div class=" font-bold text-xl sm:text-2xl text-sky-700">Make something Saturday</div>
+					<div class=" font-mono text-sm bg-sky-100 px-1 py-0.5 rounded text-sky-700">June 24</div>
+
+				</div>
+				<img class="relative rounded" src="/images/misc/orbitallounge.webp" alt="dol">
+			</div>
+			<div class="pt-3">
+				<div class="pt-3">
+					<div class="font-bold">Welcome!</div>
+						
+					<div class="pt-3 text-neutral-700">I’m Donald, I’ll be hosting you at Orbital Lounge tomorrow. Orbital is at <a class="text-blue-600 underline" target="_blank" rel="noreferrer noopener" href="https://www.google.com/maps/place/58+Keefer+Pl,+Vancouver,+BC+V6B+0B8/@49.2792813,-123.1065474,17z/data=!3m1!4b1!4m6!3m5!1s0x5486717ba9779513:0xeafe1ab3246a54bc!8m2!3d49.2792813!4d-123.1065474!16s%2Fg%2F11c21vlt_2?entry=ttu">58 Keefer Pl</a>, right beside the Stadium Chinatown skytrain station. </div>
+
+					<div class="pt-3 text-neutral-700">We will be getting underway at 9:30. I ask that people don’t arrive after 10:00 unless they have made special arrangements. I need to come down and let people up - dm me on twitter once you have arrived outside the building. I will be wearing a flower shirt!</div>
+
+					<div class="pt-3 text-neutral-700">We will be conducting dedicated working blocks throughout the day. You are encouraged to work on something outside of your main responsibilities - but nothing is off the table. Responding to 100 emails is a totally great outcome.</div>
+
+					<div class="pt-3">
+						<div class="font-bold">Schedule:</div>
+						<ul class="list-inside list-disc text-neutral-700">
+						<li>9:30 - 10:00 arrive, hello, settle</li>
+						<li>10:00 - 11:00 work</li>
+						<li>11:00 - 11:15 break</li>
+						<li>11:15 - 12:15 work</li>
+						<li>12:15 - 1:15 lunch</li>
+						<li>1:15 - 2:15 work</li>
+						<li>2:15 - 4:00 free time (and opt-in showcase)</li>
+					</ul>
+					</div>
+
+					<div class="pt-3 text-neutral-700">We will be working in 1 hour time blocks with 15 minute breaks. All are encouraged to respect the scheduled time blocks but exercise your agency as you wish. Working hours will be low-interruptions indoors, please be respectful when people are heads down. As the host, I’ll be the exception, feel free to ask me questions anytime.</div>
+
+					<div class="pt-3"><div class="font-bold">Breaks:</div>
+						<div class="text-neutral-700">During break time, everything is fair game. I encourage people to congregate on the roof - but you are welcome to stay inside as well.</div></div>
+
+					<div class="pt-3 text-neutral-700"><div class="font-bold text-black">Lunch:</div> For those who are interested, I’ll be placing an order from Nuba. I will collect your orders during break time. If you participate, please etransfer me the amount of your order: donaldjewkes [at] gmail [dot] com</div>
+
+					<div class="pt-3 text-neutral-700"><div class="font-bold text-black">Refreshments:</div>Coffee, bubblys, pu'er tea, and snacks are available. If you're peckish, help yourself to anything in the fridge/cupboards/freezer.</div>
+
+
+					<div class="pt-3 text-neutral-700"><div class="text-black font-bold">Freetime / Showcase:</div> After our final working block, people have the opportunity to discuss or showcase what they have been working on. There will be a TV and an HDMI available. This is entirely opt-in; you’re not expected to have anything to showcase. For those interested, there will be free time until 4:00, after which we will part ways :)</div>
+
+					<div class="pt-3">
+						<div class="font-bold">Notes on spaces:</div>
+						<ul class="list-disc list-inside text-neutral-700">
+						  <li>The common area: Most of the working space is here. Desks are first come first serve. Use the materials around you to make a suitable working environment. There will be light ambiance music playing.</li>
+						  <li>The roof: The roof will be a social environment throughout the day. You are welcome to work here but be open to interruptions. This will be a congregation point for breaks and for lunch.</li>
+						  <li>Upstairs: There are two available desks here, one of which is a treadmill desk.</li>
+						  <li>Solarium: there is a bed in here that’s good for sitting, laying, and thinking. You are welcome to use it.</li>
+						  <li>The bathroom: We have a shared bathroom at the base of the spiral stairs.</li>
+						  <li>Closed doors: I ask that you are respectful of privacy, closed doors are off limits.</li>
+						</ul>
+					  </div>
+					</div>
+
+					<div class="pt-3"><div class="font-bold">Misc:</div>
+					<ul class="list-inside list-disc"> 
+						<li><a class="text-blue-600 underline" target="_blank" rel="noreferrer noopener" href="https://ritual.co/order/nuba-gastown-hastings-cambie-vancouver/bcca?r=NUBA">Nuba's online menu</a></li>
+						<li><a class="text-blue-600 underline" target="_blank" rel="noreferrer noopener" href="https://twitter.com/donaldjewkes">Twitter for contact</a></li>
+
+						<img class="pt-3 w-48" src="/images/misc/wifi.png" alt="">
+					</ul>
+					</div>
+					<div class="mt-6 w-full border-neutral-500 border-t"></div>
+					<div class="pt-6">
+						<div>
+							See you soon :)
+						</div>	
+						<img class="mt-3 rounded" src="/images/misc/footer.jpg" alt=""></div>
+
+			</div>
+			
+		</div>
+	</Base>
+</html>
