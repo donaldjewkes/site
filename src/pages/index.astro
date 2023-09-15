@@ -4,6 +4,8 @@ import DirHeader from "../components/DirHeader.astro";
 import MainDirectory from "../components/MainDirectory.astro";
 import { Image, Picture } from '@astrojs/image/components';
 import localImage from "../assets/tester.jpg";
+import Link from "../components/Link.astro"
+
 ---
 <html lang="en">
 <!-- Welcome friend.-->
@@ -22,6 +24,36 @@ import localImage from "../assets/tester.jpg";
 	<DirHeader>
 	</DirHeader>
 
+		<div class="p-4 lg:py-6 max-w-2x text-zinc-800">
+			<div class="flex flex-row items-center ">
+				<img class="relative rounded h-24 w-24	" src="/images/icons/donaldicon.jpg">
+				<!-- <Image width={200} height={200} class="relative rounded h-16 w-16" src={import("/public/images/icons/dol_icosm.jpg")} alt="icon"></Image> -->
+				<!-- <div class="absolute mt-2 ml-1 -z-10 rounded h-16 w-16 bg-primary"></div> -->
+				<div class="pl-4">
+					<div class="font-bold ">Hey, I'm Donald.</div>
+				</div>
+			</div>
+			
+			<div class="pt-4 text-zinc-600 space-y-2">
+				<div>
+					<span>I'm a developer at </span>
+					<Link href="http://www.motionhall.com" text="MotionHall" nt="1"></Link>.
+					
+				</div>
+				<div class=""></div>
+				<div>You can see some of the projects I've worked on in the past <Link href="/projects" text="here"/>. Sometimes I write about <Link href="/bread" text="bread"/> or shoot <Link href="/photos" text="photos"/></div>
+
+				I've also been learning about biotech R&D, transactions, and regulatory pathways.
+				<span>We are working to accelerate tech transfer in the life sciences. Recently I've been building infrastructure to track intellectual property across the pharmaceutical industry.</span>
+			</div>
+			<div class="pt-6 text-neutral-800 font-bold " id="contact">Get in touch</div>
+			<div class="pt-2 flex flex-row">
+				<div class="text-zinc-600">email: donaldjewkes [at] gmail [dot] com</div>
+				<div>twitter <Link href="https://twitter.com/donaldjewkes" text="@donaldjewkes" nt="1"></Link>.</div>
+			</div>
+
+		</div>
+
 		<div class="w-full mx-auto">
 			<div class="w-full mx-auto p-4">
 				<div class=" w-full flex flex-row items-center justify-between space-x-4">
@@ -38,10 +70,10 @@ import localImage from "../assets/tester.jpg";
 						</MainDirectory>
 					</div>
 					<div class=" rounded">
-						<Image width={300} class="relative rounded sm:w-full w-32 h-40 object-cover object-center opacity-90 " src={import('/public/images/pages/church.jpg')} alt="Saints Peter and Paul Church"></Image>
+						<img class="relative rounded sm:w-full w-32 h-40 object-cover object-center opacity-90 " src="/public/images/pages/church.jpg" alt="Saints Peter and Paul Church"/>
+						<!-- <Image width={300} class="relative rounded sm:w-full w-32 h-40 object-cover object-center opacity-90 " src={import('/public/images/pages/church.jpg')} alt="Saints Peter and Paul Church"></Image> -->
 					</div>
 				</div>	
-				<iframe id="Hey, I'm glad you found me. You should go listen to this song :) if you'd like you can -b checkout the /loft as well" class="hidden mt-4 opacity-10" style="border-radius:12px" src="https://open.spotify.com/embed/track/0S9lwd7JF9878QQ6tuuIQg?utm_source=generator&theme=0" width="100%" height="100" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>		
 			</div>
 		</div>
 	</Base>
