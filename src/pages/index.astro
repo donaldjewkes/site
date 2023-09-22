@@ -4,6 +4,8 @@ import DirHeader from "../components/DirHeader.astro";
 import MainDirectory from "../components/MainDirectory.astro";
 import { Image, Picture } from '@astrojs/image/components';
 import localImage from "../assets/tester.jpg";
+import Link from "../components/Link.astro"
+
 ---
 <html lang="en">
 <!-- Welcome friend.-->
@@ -18,11 +20,51 @@ import localImage from "../assets/tester.jpg";
 <!-- Enjoy your stay.-->
 	 
 	<Base title="Donald Jewkes" 
-		description="I live in Vancouver, Canada and I'm a developer at MotionHall. We are working to accelerate the rate of tech transfer in the life sciences.">
+		description="Hey I'm Donald, I'm trying to leave the world better than I found it :)">
 	<DirHeader>
 	</DirHeader>
 
-		<div class="w-full mx-auto">
+		<div class="pt-8 p-4  max-w-2x text-zinc-800">
+			<div class="flex flex-row items-center space-x-6 justify-between">
+				
+				<!-- <Image width={200} height={200} class="relative rounded h-16 w-16" src={import("/public/images/icons/dol_icosm.jpg")} alt="icon"></Image> -->
+				<!-- <div class="absolute mt-2 ml-1 -z-10 rounded h-16 w-16 bg-primary"></div> -->
+				<div class="">
+					<div class="font-bold ">Hey, I'm Donald.</div>
+					<div class="pt-2">I'm trying to leave the world better than I found it :)</div>
+				</div>
+				<img class="relative rounded h-20 w-20	" src="/images/icons/faceSM.jpg">
+			</div>
+			
+			<div class="pt-12 text-zinc-800 space-y-2">
+				<div class=""><div class="font-bold">Now</div>
+					<ul class="py-2 pl-10 list-[disc] space-y-2">
+						<li>Building software to help biotechs partner at <Link href="http://www.motionhall.com" text="MotionHall" nt="t"/>.</li>
+						<li>Between SF and Vancouver - say hi!</li>
+					</ul>
+				</div>
+				<div class=""><div class="font-bold">Past</div>
+					<ul class="py-2 pl-10 list-[disc] space-y-2">
+						<li>Started a <Link href="/projects/liven" text="post-workout probiotic company"/>.</li>
+						<li>Filmed a feature length <Link href="/projects/wtwm" text="documentary on oyster aquaculture"/>.</li>
+						<li>Lived in an artist's sea tower in Panama.</li>
+						<li>Bikepacked 1000km in Newfoundland.</li>
+						<li>Wrote about <Link href="/bread" text="bread"/>.</li>
+					</ul>
+				</div>
+				<div class=""><div class="font-bold">Contact</div>
+				<ul class="py-2 pl-10 list-[disc] space-y-2">
+					<li><span class="font-bol">email:</span> donaldjewkes [at] gmail [dot] com</li>
+					<li><span class="font-bod">twitter:</span> <Link href="https://twitter.com/donaldjewkes" text="@donaldjewkes" nt="1"></Link></li>
+				</ul>
+			</div>
+				
+				<!-- I've also been learning about biotech R&D, transactions, and regulatory pathways.
+				<span>We are working to accelerate tech transfer in the life sciences. Recently I've been building infrastructure to track intellectual property across the pharmaceutical industry.</span> -->
+			</div>
+		</div>
+
+		<!-- <div class="w-full mx-auto">
 			<div class="w-full mx-auto p-4">
 				<div class=" w-full flex flex-row items-center justify-between space-x-4">
 					<div class="flex flex-col space-y-1 items-start justify-center">
@@ -32,18 +74,15 @@ import localImage from "../assets/tester.jpg";
 						</MainDirectory>
 						<MainDirectory link="/photos" image="/images/icons/camera.png" text="photos" alt="An old film camera.">
 						</MainDirectory>
-						<!-- <MainDirectory link="/thinks" image="/images/icons/thinking.png" text="thinks" alt="A man sitting and thinking.">
-						</MainDirectory> -->
 						<MainDirectory link="/projects" image="/images/icons/chisel.png" text="projects" alt="A chisel and a block.">
 						</MainDirectory>
 					</div>
 					<div class=" rounded">
-						<Image width={300} class="relative rounded sm:w-full w-32 h-40 object-cover object-center opacity-90 " src={import('/public/images/pages/church.jpg')} alt="Saints Peter and Paul Church"></Image>
+						<img class="relative rounded sm:w-full w-32 h-40 object-cover object-center opacity-90 " src="/public/images/pages/church.jpg" alt="Saints Peter and Paul Church"/>
 					</div>
 				</div>	
-				<iframe id="Hey, I'm glad you found me. You should go listen to this song :) if you'd like you can -b checkout the /loft as well" class="hidden mt-4 opacity-10" style="border-radius:12px" src="https://open.spotify.com/embed/track/0S9lwd7JF9878QQ6tuuIQg?utm_source=generator&theme=0" width="100%" height="100" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>		
 			</div>
-		</div>
+		</div> -->
 	</Base>
 </html>
  
