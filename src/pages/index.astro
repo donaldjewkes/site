@@ -24,36 +24,46 @@ import Link from "../components/Link.astro"
 	<DirHeader>
 	</DirHeader>
 
-		<div class="pt-8 p-4  max-w-2x text-zinc-800">
-			<div class="flex flex-row items-center space-x-6 justify-between">
+		<div class="pt-84 p-4 max-w-2xl text-zinc-800">
+			<div class="flex flex-row items-center space-x-6 justify-right">
 				
 				<!-- <Image width={200} height={200} class="relative rounded h-16 w-16" src={import("/public/images/icons/dol_icosm.jpg")} alt="icon"></Image> -->
 				<!-- <div class="absolute mt-2 ml-1 -z-10 rounded h-16 w-16 bg-primary"></div> -->
+				<img draggable="false" class="relative h-32 w-32" src="/images/icons/128dj.svg">
 				<div class="">
-					<div class="font-bold ">Hey, I'm Donald.</div>
-					<div class="pt-2">I'm trying to leave the world better than I found it :)</div>
+					
+					<div class="flex flex-row items-center">
+						<div class="font-bold ">Hey, I'm Donald</div>
+						<img draggable="false" class="pl-2 relative h-5 opacity-80 " src="/images/icons/face.svg">
+					</div>
+
+					<div class="pt-2 text">I'm trying to leave the world better than I found it.</div>
 				</div>
-				<img class="relative rounded h-20 w-20	" src="/images/icons/faceSM.jpg">
 			</div>
 			
-			<div class="pt-12 text-zinc-800 space-y-2">
-				<div class=""><div class="font-bold">Now</div>
+			<div class="pt-8 text-zinc-800 space-y-2">
+				<div class=""><div class="">I made software for biopharma at <Link href="http://www.motionhall.com" text="MotionHall" nt="t"/>, which we <Link href="https://www.prnewswire.com/news-releases/clarivate-acquires-ai-start-up-to-accelerate-strategy-and-business-development-success-for-life-sciences--healthcare-clients-302095042.html" text="sold" nt="t"/> in 2024.</div>
+				<div class="pt-2">I'm either in SF or Vancouver.</div>
+				
+			</div>
+
+				<!-- <div class=""><div class="font-bold">Now</div>
 					<ul class="py-2 pl-10 list-[disc] space-y-2">
 						<li>Building software to help biotechs partner at <Link href="http://www.motionhall.com" text="MotionHall" nt="t"/>.</li>
 						<li>Between SF and Vancouver - say hi!</li>
 					</ul>
-				</div>
-				<div class=""><div class="font-bold">Past</div>
-					<ul class="py-2 pl-10 list-[disc] space-y-2">
-						<li>Started a <Link href="/projects/liven" text="post-workout probiotic company"/>.</li>
-						<li>Filmed a feature length <Link href="/projects/wtwm" text="documentary on oyster aquaculture"/>.</li>
-						<li>Lived in an artist's sea tower in Panama.</li>
-						<li>Bikepacked 1000km in Newfoundland.</li>
-						<li>Wrote about <Link href="/bread" text="bread"/>.</li>
+				</div> -->
+				<div class="pt-4"><div class="font-bold">Forays</div>
+					<ul class="py-2 list-[none] space-y-2">
+						<li>Filmed a feature length <Link href="/projects/wtwm" text="documentary"/> on oyster aquaculture.</li>
+						<li>Started a post-workout probiotic <Link href="/projects/liven" text="company"/>.</li>
+						<li>Lived in an artist's <Link href="/projects/buffo" text=" sea tower"/> in Panama.</li>
+						<li>Bikepacked 1000km to a <Link href="https://en.wikipedia.org/wiki/Western_Brook_Pond" text="fjord"/> in Newfoundland.</li>
+						<!-- <li>Wrote about <Link href="/bread" text="bread"/>.</li> -->
 					</ul>
 				</div>
-				<div class=""><div class="font-bold">Contact</div>
-				<ul class="py-2 pl-10 list-[disc] space-y-2">
+				<div class="pt-4"><div class="font-bold">Contact</div>
+				<ul class="py-2 list-[none] space-y-2">
 					<li><span class="font-bol">email:</span> donaldjewkes [at] gmail [dot] com</li>
 					<li><span class="font-bod">twitter:</span> <Link href="https://twitter.com/donaldjewkes" text="@donaldjewkes" nt="1"></Link></li>
 				</ul>

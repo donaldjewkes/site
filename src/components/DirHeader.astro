@@ -5,9 +5,9 @@ import { Image, Picture } from '@astrojs/image/components';
 import dol from '../dol.png'
 ---
 
-<div class="relative w-full mx-auto max-w-2xl mix-blend-multiply border-black flex items-center">
-    <a href="/" class="w-full">
-        <div class="pt-2 lg:pt-6 flex flex-col items-start w-full">
+<div class="relative  mx-auto mix-blend-multiply border-black flex items-center">
+    <a draggable="false" href="/" class="w-full">
+        <div class="pt-4 lg:pt-16 flex flex-col items-start w-full">
             <!-- <div class="absolute w-full rounded object-bottom object-cover">
                 <img class="-z-10 h-16 w-full object-top object-cover rounded" src="/images/pages/hero2.jpg">
             </div> -->
@@ -16,19 +16,21 @@ import dol from '../dol.png'
                     <!-- <div class="relative bg-primary group-hover:bg-secondary rounded-full transition-all duration-300 h-9 w-9"></div> -->
                     <div class="absolute bg-primary group-hover:bg-secondary rounded-full transition-all duration-300  h-3 w-3"></div>
                     <!-- <div class="relative h-8 w-8 rounded-full"></div> -->
-                    <img class="relative rotate-180 h-5 w-5" src="/images/icons/vajra.png" alt="dol">
+                    <img draggable="false" class="relative rotate-180 h-4 w-4" src="/images/icons/vajra.png" alt="dol">
                     <!-- <Image width={75} height={75} class="relative h-10 w-10" src={import("../dol.png")} alt="icon"></Image> -->
                 </div>
-                <div class="relative pl-3">
-                    <div class="text-zinc-800 font-bold text-lg grup-hover:underline decoration-double decoration-secondary decoration-2 underline-offset-4 transition-all duration-300">
-                        Donald Jewkes
+                <div class="relative pl-2">
+
+                    <div class="text-zinc-800 text font-bold grup-hover:underline decoration-double decoration-secondary decoration-2 underline-offset-1 transition-all duration-300">
+                        <img draggable="false" class="relative w-24 h-6 opacity-70" src="/images/icons/donaldjewkes.svg">
+                        <!-- Donald Jewkes -->
                     </div>
                     <div class="w-0 group-hover:w-full h-0.5 bg-secondary btransition-all duration-300">
                     </div>
                 </div>
             </div>
-            <div class=" lg:mt-2 mx-auto  w-full border-b border-zinc-300">
-            </div>
+            <!-- <div class=" lg:mt-2 mx-auto  w-full border-b border-zinc-300">
+            </div> -->
         </div>
     </a>
 </div>
