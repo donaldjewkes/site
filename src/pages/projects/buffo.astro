@@ -1,0 +1,28 @@
+---
+import Base from "../../components/Base.astro";
+const {link, image, text} = Astro.props
+import { Image, Picture } from '@astrojs/image/components';
+import DirHeader from "../../components/DirHeader.astro";
+
+---
+
+
+<Base title = "Buffo" description ="Buffo - artist at sea">
+	<DirHeader id="top"></DirHeader>
+		
+		<div class="p-4 pb-12">
+			<!-- build into component -->
+			<!-- <Image width={500} class="rounded relative w-full h-44 object-cover object-bottom" src={import("/public/images/pages/wtwmposter.png")} alt="icon"></Image> -->
+ 
+			<div class="flex flex-row items-center">
+				<h1 class="text-xl font-bold text-zinc-800">Buffo</h1>
+			</div>
+			<div class="text-zinc-600 pt-1 font-light text-xs italic">
+				Incoming...
+			</div>
+			<div class=" flex flex-col items-center space-y-4 sm:space-y-0 sm:flex-row sm:space-x-4">
+				<img draggable="false" class=" w-full sm:w-80 sm:h-80 pt-8" src="/images/pages/filiberto.svg">
+				<img draggable="false" class=" w-full sm:w-80 sm:h-80 pt-8" src="/images/pages/tower.svg">
+			</div>
+		</div>
+</Base>
